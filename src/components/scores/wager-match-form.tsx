@@ -1,0 +1,143 @@
+import { useState } from 'react'
+import { SheetHeader, SheetTitle } from '@/components/ui/sheet'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { ChevronLeft, CheckCircle2, DollarSign } from 'lucide-react'
+import { useAuthStore } from '@/stores/auth-store'
+import { usePlayers, useCreateWager, useWalletBalance } from '@/hooks/use-data'
+import { PlayerAvatar } from '@/components/ui/player-avatar'
+import { formatWalletBalance } from '@/lib/format'
+
+interface Props {
+  onClose: () => void
+  onBack: () => void
+}
+
+export function WagerMatchForm({ onClose, onBack }: Props) {
+  const currentPlayer = useAuthStore((s) => s.currentPlayer)
+  const { data: players = [] } = usePlayers()
+  const { data: walletBalance = 0 } = useWalletBalance(currentPlayer?.id ?? '')
+  const createWager = useCreateWager()
+
+  const [opponentId, setOpponentId] = useState('')
+  const [amount, setAmount] = useState('')
+  const [success, setSuccess] = useState(false)
+
+  const opponents = players.filter((p) => p.id !== currentPlayer?.id)
+  const selectedOpponent = opponents.find((o) => o.id === opponentId)
+  const amountNum = Number(amount)
+  const isAmountValid = amountNum > 0 && amountNum <= walletBalance
+
+  const handleSubmit = async () => {
+    if (!currentPlayer || !opponentId) return
+    await createWager.mutateAsync({
+      proposer_id: currentPlayer.id,
+      opponent_id: opponentId,
+      amount: amountNum,
+    })
+    setSuccess(true)
+  }
+
+  if (success) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12 gap-4">
+        <div className="h-16 w-16 rounded-full flex items-center justify-center"
+          style={{ backgroundColor: 'oklch(0.65 0.18 50 / 0.2)' }}>
+          <CheckCircle2 className="h-8 w-8" style={{ color: 'oklch(0.65 0.18 50)' }} />
+        </div>
+        <h3 className="text-xl font-bold">Wager Sent!</h3>
+        <p className="text-sm text-muted-foreground text-center">
+          {selectedOpponent?.display_name} has been notified. The wager will be active once they accept.
+        </p>
+        <Button onClick={onClose} className="mt-4 w-full"
+          style={{ backgroundColor: 'oklch(0.65 0.18 50)' }}>
+          Done
+        </Button>
+      </div>
+    )
+  }
+
+  return (
+    <>
+      <SheetHeader className="mb-6">
+        <div className="flex items-center gap-3">
+          <Button variant="ghost" size="icon" onClick={onBack} className="h-8 w-8">
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <SheetTitle className="text-lg font-bold">New Wager</SheetTitle>
+        </div>
+      </SheetHeader>
+
+      <div className="space-y-5">
+        {/* Wallet balance */}
+        <div
+          className="flex items-center justify-between p-3 rounded-xl"
+          style={{ backgroundColor: 'oklch(0.65 0.18 50 / 0.1)', border: '1px solid oklch(0.65 0.18 50 / 0.3)' }}
+        >
+          <span className="text-sm text-muted-foreground">Your wallet</span>
+          <span className="font-bold" style={{ color: 'oklch(0.65 0.18 50)' }}>
+            {formatWalletBalance(walletBalance)}
+          </span>
+        </div>
+
+        {/* Opponent selector */}
+        <div>
+          <Label className="mb-2 block">Choose opponent</Label>
+          <div className="space-y-2 max-h-48 overflow-y-auto">
+            {opponents.map((opp) => (
+              <button
+                key={opp.id}
+                onClick={() => setOpponentId(opp.id)}
+                className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-all text-left ${
+                  opponentId === opp.id
+                    ? 'border-[oklch(0.65_0.18_50)] bg-[oklch(0.65_0.18_50/0.1)]'
+                    : 'border-border bg-card'
+                }`}
+              >
+                <PlayerAvatar player={opp} size="sm" />
+                <div>
+                  <p className="font-semibold text-sm">{opp.display_name}</p>
+                  <p className="text-xs text-muted-foreground">
+                    Wallet: {formatWalletBalance(opp.wallet_balance)}
+                  </p>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Amount */}
+        <div>
+          <Label>Wager amount</Label>
+          <div className="relative mt-1.5">
+            <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              type="number"
+              className="pl-9"
+              placeholder="0.00"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              min={1}
+              max={walletBalance}
+            />
+          </div>
+          {amount && !isAmountValid && (
+            <p className="text-xs text-destructive mt-1">
+              {amountNum <= 0 ? 'Enter a valid amount' : 'Exceeds your wallet balance'}
+            </p>
+          )}
+        </div>
+
+        <Button
+          onClick={handleSubmit}
+          disabled={!opponentId || !isAmountValid || createWager.isPending}
+          className="w-full"
+          style={{ backgroundColor: 'oklch(0.91 0.19 106)', color: 'oklch(0.20 0.07 150)' }}
+        >
+          {createWager.isPending ? 'Sending...' : 'Send Wager Challenge'}
+        </Button>
+      </div>
+    </>
+  )
+}
