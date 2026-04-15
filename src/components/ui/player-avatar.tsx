@@ -1,22 +1,25 @@
+import { useState } from 'react'
 import { cn } from '@/lib/utils'
 import type { Profile } from '@/lib/types'
+import { getProfileAvatarSrc } from '@/lib/avatar-src'
+import { profileDisplayName } from '@/lib/format'
 
 const AVATAR_COLORS = [
   ['oklch(0.29 0.072 160)', 'oklch(0.91 0.19 106)'], // green/lime
-  ['oklch(0.42 0.15 260)', 'white'],                   // blue
-  ['oklch(0.50 0.21 26)', 'white'],                    // red
-  ['oklch(0.55 0.12 200)', 'white'],                   // teal
-  ['oklch(0.60 0.18 330)', 'white'],                   // purple
-  ['oklch(0.65 0.18 50)', 'white'],                    // orange
+  ['oklch(0.42 0.15 260)', 'white'], // blue
+  ['oklch(0.50 0.21 26)', 'white'], // red
+  ['oklch(0.55 0.12 200)', 'white'], // teal
+  ['oklch(0.60 0.18 330)', 'white'], // purple
+  ['oklch(0.65 0.18 50)', 'white'], // orange
 ]
 
 function getAvatarColor(name: string): [string, string] {
   const index = name.charCodeAt(0) % AVATAR_COLORS.length
-  return AVATAR_COLORS[index]
+  return AVATAR_COLORS[index] as [string, string]
 }
 
 interface PlayerAvatarProps {
-  player: Pick<Profile, 'display_name' | 'initials'>
+  player: Pick<Profile, 'display_name' | 'initials' | 'id' | 'avatar_url' | 'full_name'>
   size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl'
   className?: string
 }
@@ -30,19 +33,32 @@ const SIZE_CLASSES = {
 }
 
 export function PlayerAvatar({ player, size = 'md', className }: PlayerAvatarProps) {
-  const [bg, text] = getAvatarColor(player.display_name)
+  const [imgFailed, setImgFailed] = useState(false)
+  const label = profileDisplayName(player)
+  const [bg, text] = getAvatarColor(label)
+  const src = getProfileAvatarSrc(player)
+  const showImg = !imgFailed
 
   return (
     <div
       className={cn(
-        'rounded-full flex items-center justify-center font-bold flex-shrink-0',
+        'rounded-full flex items-center justify-center font-bold flex-shrink-0 overflow-hidden',
         SIZE_CLASSES[size],
         className
       )}
-      style={{ backgroundColor: bg, color: text }}
-      title={player.display_name}
+      style={showImg ? undefined : { backgroundColor: bg, color: text }}
+      title={label}
     >
-      {player.initials}
+      {showImg ? (
+        <img
+          src={src}
+          alt=""
+          className="h-full w-full object-cover"
+          onError={() => setImgFailed(true)}
+        />
+      ) : (
+        player.initials
+      )}
     </div>
   )
 }

@@ -9,7 +9,7 @@ export function BottomNav() {
   const navigate = useNavigate()
   const openScoreSheet = useUIStore((s) => s.openScoreSheet)
   const activeTourTab = useUIStore((s) => s.activeTourTab)
-  const currentPlayer = useAuthStore((s) => s.currentPlayer)
+  const profile = useAuthStore((s) => s.profile)
 
   const isActive = (path: string | null) => {
     if (!path) return false
@@ -76,7 +76,7 @@ export function BottomNav() {
             active={isActive('/tour')}
             onClick={() => navigate('/tour')}
           />
-        ) : currentPlayer?.is_admin ? (
+        ) : profile?.is_admin ? (
           <NavButton
             icon={<Settings className="h-5 w-5" />}
             label="Admin"

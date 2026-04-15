@@ -135,8 +135,9 @@
     .safe-bottom {
         padding-bottom: env(safe-area-inset-bottom, 0px);
     }
+    /* At least py-3 top padding; notches add on top (don’t let env(0) wipe pt from py-3 + safe-top) */
     .safe-top {
-        padding-top: env(safe-area-inset-top, 0px);
+        padding-top: max(0.75rem, env(safe-area-inset-top, 0px));
     }
 }
 

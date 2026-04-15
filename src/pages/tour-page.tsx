@@ -4,8 +4,11 @@ import { PlayerAvatar } from '@/components/ui/player-avatar'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ChevronRight } from 'lucide-react'
+import { profileDisplayName } from '@/lib/format'
 import { cn } from '@/lib/utils'
-import type { TourTeam } from '@/lib/types'
+import type { Profile, TourPlayer, TourTeam } from '@/lib/types'
+
+type TourPlayerRow = TourPlayer & { profile: Profile }
 
 export function TourPage() {
   const navigate = useNavigate()
@@ -215,7 +218,7 @@ function TeamRoster({
   total,
 }: {
   team: TourTeam
-  players: { profile: ReturnType<typeof useTourPlayers>['data'] extends Array<infer T> ? T : never }[]
+  players: TourPlayerRow[]
   total: number
 }) {
   const color = team === '93s' ? 'oklch(0.42 0.15 260)' : 'oklch(0.50 0.21 26)'
@@ -232,11 +235,9 @@ function TeamRoster({
         {team}
       </div>
       {players.map((p) => (
-        <div key={(p as { id: string }).id} className="flex items-center gap-2">
-          <PlayerAvatar player={(p as { profile: { display_name: string; initials: string } }).profile} size="xs" />
-          <span className="text-xs font-medium truncate">
-            {(p as { profile: { display_name: string } }).profile.display_name}
-          </span>
+        <div key={p.id} className="flex items-center gap-2">
+          <PlayerAvatar player={p.profile} size="xs" />
+          <span className="text-xs font-medium truncate">{profileDisplayName(p.profile)}</span>
         </div>
       ))}
       {total > 4 && (

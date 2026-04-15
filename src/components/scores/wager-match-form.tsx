@@ -7,7 +7,7 @@ import { ChevronLeft, CheckCircle2, DollarSign } from 'lucide-react'
 import { useAuthStore } from '@/stores/auth-store'
 import { usePlayers, useCreateWager, useWalletBalance } from '@/hooks/use-data'
 import { PlayerAvatar } from '@/components/ui/player-avatar'
-import { formatWalletBalance } from '@/lib/format'
+import { formatWalletBalance, profileDisplayName } from '@/lib/format'
 
 interface Props {
   onClose: () => void
@@ -15,24 +15,24 @@ interface Props {
 }
 
 export function WagerMatchForm({ onClose, onBack }: Props) {
-  const currentPlayer = useAuthStore((s) => s.currentPlayer)
+  const profile = useAuthStore((s) => s.profile)
   const { data: players = [] } = usePlayers()
-  const { data: walletBalance = 0 } = useWalletBalance(currentPlayer?.id ?? '')
+  const { data: walletBalance = 0 } = useWalletBalance(profile?.id ?? '')
   const createWager = useCreateWager()
 
   const [opponentId, setOpponentId] = useState('')
   const [amount, setAmount] = useState('')
   const [success, setSuccess] = useState(false)
 
-  const opponents = players.filter((p) => p.id !== currentPlayer?.id)
+  const opponents = players.filter((p) => p.id !== profile?.id)
   const selectedOpponent = opponents.find((o) => o.id === opponentId)
   const amountNum = Number(amount)
   const isAmountValid = amountNum > 0 && amountNum <= walletBalance
 
   const handleSubmit = async () => {
-    if (!currentPlayer || !opponentId) return
+    if (!profile || !opponentId) return
     await createWager.mutateAsync({
-      proposer_id: currentPlayer.id,
+      proposer_id: profile.id,
       opponent_id: opponentId,
       amount: amountNum,
     })
@@ -48,7 +48,7 @@ export function WagerMatchForm({ onClose, onBack }: Props) {
         </div>
         <h3 className="text-xl font-bold">Wager Sent!</h3>
         <p className="text-sm text-muted-foreground text-center">
-          {selectedOpponent?.display_name} has been notified. The wager will be active once they accept.
+          {selectedOpponent ? profileDisplayName(selectedOpponent) : ''} has been notified. The wager will be active once they accept.
         </p>
         <Button onClick={onClose} className="mt-4 w-full"
           style={{ backgroundColor: 'oklch(0.65 0.18 50)' }}>
@@ -97,7 +97,7 @@ export function WagerMatchForm({ onClose, onBack }: Props) {
               >
                 <PlayerAvatar player={opp} size="sm" />
                 <div>
-                  <p className="font-semibold text-sm">{opp.display_name}</p>
+                  <p className="font-semibold text-sm">{profileDisplayName(opp)}</p>
                   <p className="text-xs text-muted-foreground">
                     Wallet: {formatWalletBalance(opp.wallet_balance)}
                   </p>
