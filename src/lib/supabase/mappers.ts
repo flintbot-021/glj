@@ -22,6 +22,7 @@ import type {
   TourMatchPlayer,
   TourChumpsPick,
   TourHoleScore,
+  TourPlayerDayHandicap,
 } from '@/lib/types'
 
 function num(v: unknown): number {
@@ -242,12 +243,14 @@ export function mapTourCourse(r: Record<string, unknown>): TourCourse {
 }
 
 export function mapTourHole(r: Record<string, unknown>): TourHole {
+  const y = r.yardage
   return {
     id: String(r.id),
     course_id: String(r.course_id),
     hole_number: num(r.hole_number),
     par: num(r.par),
     stroke_index: num(r.stroke_index),
+    yardage: y === null || y === undefined ? null : num(y),
     created_at: String(r.created_at),
   }
 }
@@ -307,6 +310,16 @@ export function mapTourHoleScore(r: Record<string, unknown>): TourHoleScore {
     gross_score: num(r.gross_score),
     net_score: num(r.net_score),
     stableford_points: num(r.stableford_points),
+    created_at: String(r.created_at),
+  }
+}
+
+export function mapTourPlayerDayHandicap(r: Record<string, unknown>): TourPlayerDayHandicap {
+  return {
+    id: String(r.id),
+    tour_day_id: String(r.tour_day_id),
+    tour_player_id: String(r.tour_player_id),
+    course_handicap: num(r.course_handicap),
     created_at: String(r.created_at),
   }
 }

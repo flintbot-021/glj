@@ -11,6 +11,10 @@ import type {
   KnockoutFixture,
   KnockoutRound,
   WalletTransaction,
+  TourDayStatus,
+  TourMatchStatus,
+  TourStatus,
+  TourTeam,
 } from '@/lib/types'
 import {
   mapProfile,
@@ -35,6 +39,7 @@ import {
   mapTourMatchPlayer,
   mapTourHoleScore,
   mapTourChumpsPick,
+  mapTourPlayerDayHandicap,
 } from '@/lib/supabase/mappers'
 
 function throwOnErr<T>(hint: string, res: { data: T | null; error: { message: string } | null }): T {
@@ -388,6 +393,33 @@ export async function fetchTourChumpsPicks(tourId: string) {
   return (res.data as Record<string, unknown>[]).map(mapTourChumpsPick)
 }
 
+export async function fetchTourPlayerDayHandicapsForDay(dayId: string) {
+  const res = await supabase.from('tour_player_day_handicaps').select('*').eq('tour_day_id', dayId)
+  if (res.error) throw new Error(res.error.message)
+  return (res.data as Record<string, unknown>[]).map(mapTourPlayerDayHandicap)
+}
+
+/** Admin: set course handicap for a player on a given tour day (upsert). */
+export async function upsertTourPlayerDayHandicap(payload: {
+  tour_day_id: string
+  tour_player_id: string
+  course_handicap: number
+}) {
+  const res = await supabase
+    .from('tour_player_day_handicaps')
+    .upsert(
+      {
+        tour_day_id: payload.tour_day_id,
+        tour_player_id: payload.tour_player_id,
+        course_handicap: payload.course_handicap,
+      },
+      { onConflict: 'tour_day_id,tour_player_id' }
+    )
+    .select('*')
+    .single()
+  return mapTourPlayerDayHandicap(throwOnErr('upsertTourPlayerDayHandicap', res) as unknown as Record<string, unknown>)
+}
+
 // ─── Mutations ─────────────────────────────────────────────────────────────────
 
 export async function insertMatchplay(data: {
@@ -520,6 +552,224 @@ export async function markNotificationRead(notificationId: string) {
     .single()
   if (res.error) throw new Error(res.error.message)
   return mapNotification(res.data as Record<string, unknown>)
+}
+
+// ─── Admin (Tour) ─────────────────────────────────────────────────────────────
+
+export async function insertTourEvent(data: { name: string; status: TourStatus; target_points: number }) {
+  const row = await supabase.from('tour_events').insert(data).select('*').single()
+  return mapTourEvent(throwOnErr('insertTourEvent', row) as unknown as Record<string, unknown>)
+}
+
+export async function updateTourEvent(
+  id: string,
+  patch: Partial<{ name: string; status: TourStatus; target_points: number }>
+) {
+  const res = await supabase.from('tour_events').update(patch).eq('id', id).select('*').maybeSingle()
+  if (res.error) throw new Error(res.error.message)
+  return res.data ? mapTourEvent(res.data as Record<string, unknown>) : null
+}
+
+export async function insertTourPlayer(data: {
+  tour_id: string
+  player_id: string
+  team: TourTeam
+  locked_handicap: number
+  seed: number
+}) {
+  const res = await supabase.from('tour_players').insert(data).select('*').single()
+  return mapTourPlayer(throwOnErr('insertTourPlayer', res) as unknown as Record<string, unknown>)
+}
+
+export async function updateTourPlayer(
+  id: string,
+  patch: Partial<{ team: TourTeam; locked_handicap: number; seed: number }>
+) {
+  const res = await supabase.from('tour_players').update(patch).eq('id', id).select('*').maybeSingle()
+  if (res.error) throw new Error(res.error.message)
+  return res.data ? mapTourPlayer(res.data as Record<string, unknown>) : null
+}
+
+export async function deleteTourPlayer(id: string) {
+  const res = await supabase.from('tour_players').delete().eq('id', id)
+  if (res.error) throw new Error(res.error.message)
+}
+
+export async function insertTourCourse(data: { tour_id: string; name: string }) {
+  const res = await supabase.from('tour_courses').insert(data).select('*').single()
+  return mapTourCourse(throwOnErr('insertTourCourse', res) as unknown as Record<string, unknown>)
+}
+
+export async function updateTourCourse(id: string, patch: Partial<{ name: string }>) {
+  const res = await supabase.from('tour_courses').update(patch).eq('id', id).select('*').maybeSingle()
+  if (res.error) throw new Error(res.error.message)
+  return res.data ? mapTourCourse(res.data as Record<string, unknown>) : null
+}
+
+export async function deleteTourCourse(id: string) {
+  const res = await supabase.from('tour_courses').delete().eq('id', id)
+  if (res.error) throw new Error(res.error.message)
+}
+
+/** Upsert a hole row (unique on course_id + hole_number). */
+export async function upsertTourHole(data: {
+  course_id: string
+  hole_number: number
+  par: number
+  stroke_index: number
+  yardage?: number | null
+}) {
+  const payload = {
+    course_id: data.course_id,
+    hole_number: data.hole_number,
+    par: data.par,
+    stroke_index: data.stroke_index,
+    yardage: data.yardage === undefined ? null : data.yardage,
+  }
+  const res = await supabase.from('tour_holes').upsert(payload, { onConflict: 'course_id,hole_number' }).select('*').single()
+  return mapTourHole(throwOnErr('upsertTourHole', res) as unknown as Record<string, unknown>)
+}
+
+/** Insert 18 placeholder holes (par 4, SI = hole) when the course has none. */
+export async function seedTourHolesIfEmpty(courseId: string) {
+  const existing = await fetchTourHolesForCourse(courseId)
+  if (existing.length > 0) return existing
+  const rows = Array.from({ length: 18 }, (_, i) => ({
+    course_id: courseId,
+    hole_number: i + 1,
+    par: 4,
+    stroke_index: i + 1,
+    yardage: null as number | null,
+  }))
+  const res = await supabase.from('tour_holes').insert(rows).select('*')
+  if (res.error) throw new Error(res.error.message)
+  return (res.data as Record<string, unknown>[]).map(mapTourHole)
+}
+
+export async function insertTourFormat(data: {
+  name: string
+  description?: string
+  scoring_rules?: Record<string, unknown>
+}) {
+  const res = await supabase
+    .from('tour_formats')
+    .insert({
+      name: data.name,
+      description: data.description?.trim() ? data.description.trim() : null,
+      scoring_rules: data.scoring_rules ?? {},
+    })
+    .select('*')
+    .single()
+  return mapTourFormat(throwOnErr('insertTourFormat', res) as unknown as Record<string, unknown>)
+}
+
+export async function updateTourFormat(
+  id: string,
+  patch: Partial<{ name: string; description: string; scoring_rules: Record<string, unknown> }>
+) {
+  const res = await supabase.from('tour_formats').update(patch).eq('id', id).select('*').maybeSingle()
+  if (res.error) throw new Error(res.error.message)
+  return res.data ? mapTourFormat(res.data as Record<string, unknown>) : null
+}
+
+export async function deleteTourFormat(id: string) {
+  const res = await supabase.from('tour_formats').delete().eq('id', id)
+  if (res.error) throw new Error(res.error.message)
+}
+
+export async function insertTourDay(data: {
+  tour_id: string
+  day_number: number
+  course_id: string
+  format_id: string
+  status: TourDayStatus
+  played_at?: string | null
+}) {
+  const row = {
+    tour_id: data.tour_id,
+    day_number: data.day_number,
+    course_id: data.course_id,
+    format_id: data.format_id,
+    status: data.status,
+    played_at: data.played_at && data.played_at !== '' ? data.played_at : null,
+  }
+  const res = await supabase.from('tour_days').insert(row).select('*').single()
+  return mapTourDay(throwOnErr('insertTourDay', res) as unknown as Record<string, unknown>)
+}
+
+export async function updateTourDay(
+  id: string,
+  patch: Partial<{
+    course_id: string
+    format_id: string
+    status: TourDayStatus
+    played_at: string | null
+  }>
+) {
+  const res = await supabase.from('tour_days').update(patch).eq('id', id).select('*').maybeSingle()
+  if (res.error) throw new Error(res.error.message)
+  return res.data ? mapTourDay(res.data as Record<string, unknown>) : null
+}
+
+export async function deleteTourDay(id: string) {
+  const res = await supabase.from('tour_days').delete().eq('id', id)
+  if (res.error) throw new Error(res.error.message)
+}
+
+export async function insertTourMatch(data: {
+  tour_day_id: string
+  team_a: TourTeam
+  team_b: TourTeam
+  status?: TourMatchStatus
+  team_a_points?: number
+  team_b_points?: number
+}) {
+  const res = await supabase
+    .from('tour_matches')
+    .insert({
+      tour_day_id: data.tour_day_id,
+      team_a: data.team_a,
+      team_b: data.team_b,
+      status: data.status ?? 'scheduled',
+      team_a_points: data.team_a_points ?? 0,
+      team_b_points: data.team_b_points ?? 0,
+    })
+    .select('*')
+    .single()
+  return mapTourMatch(throwOnErr('insertTourMatch', res) as unknown as Record<string, unknown>)
+}
+
+export async function updateTourMatch(
+  id: string,
+  patch: Partial<{
+    team_a: TourTeam
+    team_b: TourTeam
+    status: TourMatchStatus
+    team_a_points: number
+    team_b_points: number
+  }>
+) {
+  const res = await supabase.from('tour_matches').update(patch).eq('id', id).select('*').maybeSingle()
+  if (res.error) throw new Error(res.error.message)
+  return res.data ? mapTourMatch(res.data as Record<string, unknown>) : null
+}
+
+export async function deleteTourMatch(id: string) {
+  const res = await supabase.from('tour_matches').delete().eq('id', id)
+  if (res.error) throw new Error(res.error.message)
+}
+
+export async function replaceTourMatchPlayers(
+  matchId: string,
+  rows: { tour_player_id: string; team: TourTeam; pair_index: 0 | 1 }[]
+) {
+  const del = await supabase.from('tour_match_players').delete().eq('match_id', matchId)
+  if (del.error) throw new Error(del.error.message)
+  if (rows.length === 0) return
+  const ins = await supabase
+    .from('tour_match_players')
+    .insert(rows.map((r) => ({ match_id: matchId, ...r })))
+  if (ins.error) throw new Error(ins.error.message)
 }
 
 // ─── Admin (RTD) ─────────────────────────────────────────────────────────────

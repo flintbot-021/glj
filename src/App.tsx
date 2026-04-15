@@ -17,6 +17,14 @@ import { TourChumpsPage } from '@/pages/tour-chumps-page'
 import { AdminPage } from '@/pages/admin-page'
 import { AdminRtdPage } from '@/pages/admin-rtd-page'
 import { AdminTourPage } from '@/pages/admin-tour-page'
+import { AdminTourEventPage } from '@/pages/admin-tour-event-page'
+import { AdminTourRosterPage } from '@/pages/admin-tour-roster-page'
+import { AdminTourCoursesPage } from '@/pages/admin-tour-courses-page'
+import { AdminTourCourseHolesPage } from '@/pages/admin-tour-course-holes-page'
+import { AdminTourFormatsPage } from '@/pages/admin-tour-formats-page'
+import { AdminTourDaysPage } from '@/pages/admin-tour-days-page'
+import { AdminTourHandicapsPage } from '@/pages/admin-tour-handicaps-page'
+import { AdminTourMatchesPage } from '@/pages/admin-tour-matches-page'
 import { AdminRtdSeasonPage } from '@/pages/admin-rtd-season-page'
 import { AdminRtdGroupsPage } from '@/pages/admin-rtd-groups-page'
 import { AdminRtdBonusPage } from '@/pages/admin-rtd-bonus-page'
@@ -51,6 +59,14 @@ export function App() {
                   <Route path="/admin" element={<AdminPage />} />
                   <Route path="/admin/rtd" element={<AdminRtdPage />} />
                   <Route path="/admin/tour" element={<AdminTourPage />} />
+                  <Route path="/admin/tour/event" element={<AdminTourEventPage />} />
+                  <Route path="/admin/tour/roster" element={<AdminTourRosterPage />} />
+                  <Route path="/admin/tour/courses" element={<AdminTourCoursesPage />} />
+                  <Route path="/admin/tour/courses/:courseId/holes" element={<AdminTourCourseHolesPage />} />
+                  <Route path="/admin/tour/formats" element={<AdminTourFormatsPage />} />
+                  <Route path="/admin/tour/days" element={<AdminTourDaysPage />} />
+                  <Route path="/admin/tour/handicaps" element={<AdminTourHandicapsPage />} />
+                  <Route path="/admin/tour/matches" element={<AdminTourMatchesPage />} />
                   <Route path="/admin/rtd/season" element={<AdminRtdSeasonPage />} />
                   <Route path="/admin/rtd/groups" element={<AdminRtdGroupsPage />} />
                   <Route path="/admin/rtd/bonus" element={<AdminRtdBonusPage />} />

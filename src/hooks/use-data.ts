@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient, type QueryClient } from '@tanstack/react-query'
 import {
   fetchActiveSeason,
   listProfiles,
@@ -30,6 +30,8 @@ import {
   fetchTourCourseById,
   fetchTourHoleScores,
   fetchTourChumpsPicks,
+  fetchTourPlayerDayHandicapsForDay,
+  upsertTourPlayerDayHandicap,
   fetchGroupForPlayer,
   fetchTourDayById,
   fetchTourFormatById,
@@ -52,6 +54,26 @@ import {
   insertKnockoutFixture,
   updateKnockoutFixture,
   deleteKnockoutFixture,
+  seedTourHolesIfEmpty,
+  upsertTourHole,
+  insertTourEvent,
+  updateTourEvent,
+  insertTourPlayer,
+  updateTourPlayer,
+  deleteTourPlayer,
+  insertTourCourse,
+  updateTourCourse,
+  deleteTourCourse,
+  insertTourFormat,
+  updateTourFormat,
+  deleteTourFormat,
+  insertTourDay,
+  updateTourDay,
+  deleteTourDay,
+  insertTourMatch,
+  updateTourMatch,
+  deleteTourMatch,
+  replaceTourMatchPlayers,
 } from '@/lib/supabase/api'
 import { getLadderSubSeasonId, getBestTwoRounds, ladderTotals } from '@/lib/bonus-ladder'
 import type { Wager, WagerStatus, ActivityFeedItem, TourTeam, BonusLeagueEntry } from '@/lib/types'
@@ -593,6 +615,8 @@ export function useTourDayMatches(dayId: string) {
       const tpMap = new Map(tps.map((tp) => [tp.id, tp]))
       const profileIds = [...new Set(tps.map((tp) => tp.player_id))]
       const profiles = await fetchProfileMap(profileIds)
+      const dayHandicaps = await fetchTourPlayerDayHandicapsForDay(dayId)
+      const dayHcByPlayer = new Map(dayHandicaps.map((h) => [h.tour_player_id, h.course_handicap]))
 
       const day = { ...dayRow, format, course }
 
@@ -604,10 +628,12 @@ export function useTourDayMatches(dayId: string) {
             .map((mp) => {
               const tp = tpMap.get(mp.tour_player_id)
               if (!tp) throw new Error('tour_player missing')
+              const course_handicap_day = dayHcByPlayer.get(tp.id) ?? tp.locked_handicap
               return {
                 ...tp,
                 profile: profiles.get(tp.player_id)!,
                 pair_index: mp.pair_index,
+                course_handicap_day,
               }
             })
 
@@ -747,6 +773,263 @@ export function useTourHoles() {
     enabled: !!ev?.id,
   })
 }
+
+/** Holes for a specific course (e.g. the course assigned to the match day). */
+export function useTourHolesForCourse(courseId: string | undefined) {
+  return useQuery({
+    queryKey: ['tour-holes-course', courseId],
+    queryFn: () => fetchTourHolesForCourse(courseId!),
+    enabled: !!courseId,
+  })
+}
+
+function invalidateTourAdminCaches(qc: QueryClient) {
+  const prefixes = [
+    'tour-event',
+    'tour-players',
+    'tour-days',
+    'tour-formats',
+    'tour-courses-admin',
+    'tour-matches-day',
+    'tour-day-matches',
+    'tour-holes',
+    'tour-holes-course',
+    'tour-leaderboard',
+    'tour-chumps',
+    'tour-green-jacket',
+    'tour-player-day-hc',
+  ] as const
+  for (const p of prefixes) {
+    qc.invalidateQueries({ queryKey: [p] })
+  }
+}
+
+export function useTourFormatsCatalog() {
+  return useQuery({
+    queryKey: ['tour-formats'],
+    queryFn: fetchTourFormats,
+  })
+}
+
+export function useTourCoursesForAdmin() {
+  const { data: ev } = useTourEvent()
+  return useQuery({
+    queryKey: ['tour-courses-admin', ev?.id],
+    queryFn: () => fetchTourCourses(ev!.id),
+    enabled: !!ev?.id,
+  })
+}
+
+export function useTourCourseByIdQuery(courseId: string | undefined) {
+  return useQuery({
+    queryKey: ['tour-course', courseId],
+    queryFn: () => fetchTourCourseById(courseId!),
+    enabled: !!courseId,
+  })
+}
+
+export function useTourMatchesForDay(dayId: string | undefined) {
+  return useQuery({
+    queryKey: ['tour-matches-day', dayId],
+    queryFn: () => fetchTourMatchesForDay(dayId!),
+    enabled: !!dayId,
+  })
+}
+
+export function useTourMatchPlayersBatch(matchIds: string[]) {
+  const key = [...matchIds].sort().join(',')
+  return useQuery({
+    queryKey: ['tour-match-players', key],
+    queryFn: () => fetchTourMatchPlayersForMatches(matchIds),
+    enabled: matchIds.length > 0,
+  })
+}
+
+export function useTourPlayerDayHandicapsQuery(dayId: string | undefined) {
+  return useQuery({
+    queryKey: ['tour-player-day-hc', dayId],
+    queryFn: () => fetchTourPlayerDayHandicapsForDay(dayId!),
+    enabled: !!dayId,
+  })
+}
+
+export function useUpsertTourPlayerDayHandicap() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: upsertTourPlayerDayHandicap,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['tour-day-matches'] })
+      qc.invalidateQueries({ queryKey: ['tour-player-day-hc'] })
+    },
+  })
+}
+
+export function useInsertTourEvent() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: insertTourEvent,
+    onSuccess: () => invalidateTourAdminCaches(qc),
+  })
+}
+
+export function useUpdateTourEvent() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, patch }: { id: string; patch: Parameters<typeof updateTourEvent>[1] }) => updateTourEvent(id, patch),
+    onSuccess: () => invalidateTourAdminCaches(qc),
+  })
+}
+
+export function useInsertTourPlayer() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: insertTourPlayer,
+    onSuccess: () => invalidateTourAdminCaches(qc),
+  })
+}
+
+export function useUpdateTourPlayer() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, patch }: { id: string; patch: Parameters<typeof updateTourPlayer>[1] }) =>
+      updateTourPlayer(id, patch),
+    onSuccess: () => invalidateTourAdminCaches(qc),
+  })
+}
+
+export function useDeleteTourPlayer() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: deleteTourPlayer,
+    onSuccess: () => invalidateTourAdminCaches(qc),
+  })
+}
+
+export function useInsertTourCourse() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: insertTourCourse,
+    onSuccess: () => invalidateTourAdminCaches(qc),
+  })
+}
+
+export function useUpdateTourCourse() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, patch }: { id: string; patch: Parameters<typeof updateTourCourse>[1] }) =>
+      updateTourCourse(id, patch),
+    onSuccess: () => invalidateTourAdminCaches(qc),
+  })
+}
+
+export function useDeleteTourCourse() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: deleteTourCourse,
+    onSuccess: () => invalidateTourAdminCaches(qc),
+  })
+}
+
+export function useUpsertTourHoleMutation() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: upsertTourHole,
+    onSuccess: () => invalidateTourAdminCaches(qc),
+  })
+}
+
+export function useSeedTourHoles() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: seedTourHolesIfEmpty,
+    onSuccess: () => invalidateTourAdminCaches(qc),
+  })
+}
+
+export function useInsertTourFormatMutation() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: insertTourFormat,
+    onSuccess: () => invalidateTourAdminCaches(qc),
+  })
+}
+
+export function useUpdateTourFormatMutation() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, patch }: { id: string; patch: Parameters<typeof updateTourFormat>[1] }) =>
+      updateTourFormat(id, patch),
+    onSuccess: () => invalidateTourAdminCaches(qc),
+  })
+}
+
+export function useDeleteTourFormatMutation() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: deleteTourFormat,
+    onSuccess: () => invalidateTourAdminCaches(qc),
+  })
+}
+
+export function useInsertTourDayMutation() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: insertTourDay,
+    onSuccess: () => invalidateTourAdminCaches(qc),
+  })
+}
+
+export function useUpdateTourDayMutation() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, patch }: { id: string; patch: Parameters<typeof updateTourDay>[1] }) =>
+      updateTourDay(id, patch),
+    onSuccess: () => invalidateTourAdminCaches(qc),
+  })
+}
+
+export function useDeleteTourDayMutation() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: deleteTourDay,
+    onSuccess: () => invalidateTourAdminCaches(qc),
+  })
+}
+
+export function useInsertTourMatchMutation() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: insertTourMatch,
+    onSuccess: () => invalidateTourAdminCaches(qc),
+  })
+}
+
+export function useUpdateTourMatchMutation() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, patch }: { id: string; patch: Parameters<typeof updateTourMatch>[1] }) =>
+      updateTourMatch(id, patch),
+    onSuccess: () => invalidateTourAdminCaches(qc),
+  })
+}
+
+export function useDeleteTourMatchMutation() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: deleteTourMatch,
+    onSuccess: () => invalidateTourAdminCaches(qc),
+  })
+}
+
+export function useReplaceTourMatchPlayers() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ matchId, rows }: { matchId: string; rows: Parameters<typeof replaceTourMatchPlayers>[1] }) =>
+      replaceTourMatchPlayers(matchId, rows),
+    onSuccess: () => invalidateTourAdminCaches(qc),
+  })
+}
+
 
 export function useTourChumps() {
   const { data: ev } = useTourEvent()
