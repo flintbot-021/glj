@@ -4,6 +4,7 @@ import { PlayerAvatar } from '@/components/ui/player-avatar'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ChevronLeft } from 'lucide-react'
+import { profileDisplayName } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import type { TourTeam } from '@/lib/types'
 
@@ -65,7 +66,7 @@ export function TourGreenJacketPage() {
               <PlayerAvatar player={entry.profile} size="sm" />
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5">
-                  <p className="text-sm font-semibold truncate">{entry.profile.display_name}</p>
+                  <p className="text-sm font-semibold truncate">{profileDisplayName(entry.profile)}</p>
                   <span
                     className="text-[9px] font-black px-1 py-0.5 rounded text-white flex-shrink-0"
                     style={{ backgroundColor: teamColor(entry.tour_player.team) }}

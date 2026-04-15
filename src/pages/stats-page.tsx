@@ -1,20 +1,19 @@
 import { useState } from 'react'
-import { useAllGroupStandings, usePlayerRounds, useWagers } from '@/hooks/use-data'
+import { useAllGroupStandings, usePlayerRounds, usePlayers, useWagers } from '@/hooks/use-data'
 import { useAuthStore } from '@/stores/auth-store'
 import { PlayerAvatar } from '@/components/ui/player-avatar'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
-import { formatPoints } from '@/lib/format'
+import { formatCurrency, formatPoints, formatWalletBalance, profileDisplayName } from '@/lib/format'
 import { cn } from '@/lib/utils'
-import { PLAYERS } from '@/lib/mock-data'
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip } from 'recharts'
 
 type StatsTab = 'matchplay' | 'strokeplay' | 'wagers'
 
 export function StatsPage() {
   const [tab, setTab] = useState<StatsTab>('matchplay')
-  const currentPlayer = useAuthStore((s) => s.currentPlayer)
+  const profile = useAuthStore((s) => s.profile)
 
   return (
     <div className="py-4">
@@ -40,9 +39,9 @@ export function StatsPage() {
       </div>
 
       <div className="px-4 space-y-4">
-        {tab === 'matchplay' && currentPlayer && <MatchplayStats playerId={currentPlayer.id} />}
-        {tab === 'strokeplay' && currentPlayer && <StrokeplayStats playerId={currentPlayer.id} />}
-        {tab === 'wagers' && currentPlayer && <WagerStats playerId={currentPlayer.id} />}
+        {tab === 'matchplay' && profile && <MatchplayStats playerId={profile.id} />}
+        {tab === 'strokeplay' && profile && <StrokeplayStats playerId={profile.id} />}
+        {tab === 'wagers' && profile && <WagerStats playerId={profile.id} />}
       </div>
     </div>
   )
@@ -59,9 +58,10 @@ function StatCard({ label, value, sub }: { label: string; value: string | number
 }
 
 function MatchplayStats({ playerId }: { playerId: string }) {
-  const { data: allGroups, isLoading } = useAllGroupStandings()
+  const { data: allGroups, isLoading: groupsLoading } = useAllGroupStandings()
+  const { data: allPlayers = [], isLoading: playersLoading } = usePlayers()
 
-  if (isLoading) return <StatsSkeletons />
+  if (groupsLoading || playersLoading) return <StatsSkeletons />
 
   let wins = 0, losses = 0, draws = 0, played = 0, totalPoints = 0
 
@@ -82,14 +82,16 @@ function MatchplayStats({ playerId }: { playerId: string }) {
   const form = ['W', 'D', 'W', 'L', 'W']
 
   // Leaderboard widgets
-  const sortedByPoints = PLAYERS.map((p) => {
-    let pts = 0
-    allGroups?.forEach(({ standings }) => {
-      const e = standings.find((s) => s.player.id === p.id)
-      if (e) pts = e.total_points
+  const sortedByPoints = allPlayers
+    .map((p) => {
+      let pts = 0
+      allGroups?.forEach(({ standings }) => {
+        const e = standings.find((s) => s.player.id === p.id)
+        if (e) pts = e.total_points
+      })
+      return { player: p, points: pts }
     })
-    return { player: p, points: pts }
-  }).sort((a, b) => b.points - a.points)
+    .sort((a, b) => b.points - a.points)
 
   return (
     <div className="space-y-4">
@@ -152,7 +154,7 @@ function MatchplayStats({ playerId }: { playerId: string }) {
                   'flex-1 text-sm',
                   entry.player.id === playerId && 'font-bold'
                 )}>
-                  {entry.player.display_name}
+                  {profileDisplayName(entry.player)}
                 </span>
                 <span className="text-sm font-black" style={{ color: 'oklch(0.91 0.19 106)' }}>
                   {formatPoints(entry.points)}
@@ -177,9 +179,13 @@ function StrokeplayStats({ playerId }: { playerId: string }) {
     ? Math.round(rounds.reduce((s, r) => s + r.net_score, 0) / rounds.length)
     : null
 
-  const handicapData = rounds
+  const netTrendData = rounds
     .sort((a, b) => new Date(a.played_at).getTime() - new Date(b.played_at).getTime())
-    .map((r, i) => ({ round: i + 1, handicap: r.handicap_used, net: r.net_score }))
+    .map((r, i) => ({
+      round: i + 1,
+      courseHcp: r.course_handicap,
+      net: r.net_score,
+    }))
 
   const courses = [...new Set(rounds.map((r) => r.course_name))]
 
@@ -191,14 +197,14 @@ function StrokeplayStats({ playerId }: { playerId: string }) {
         <StatCard label="Rounds" value={rounds.length} />
       </div>
 
-      {handicapData.length > 1 && (
+      {netTrendData.length > 1 && (
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-bold">Net Score Trend</CardTitle>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={120}>
-              <LineChart data={handicapData}>
+              <LineChart data={netTrendData}>
                 <XAxis dataKey="round" tick={{ fontSize: 10 }} />
                 <YAxis domain={['dataMin - 2', 'dataMax + 2']} tick={{ fontSize: 10 }} />
                 <Tooltip
@@ -287,9 +293,9 @@ function WagerStats({ playerId }: { playerId: string }) {
       <div className="flex gap-3">
         <StatCard
           label="Net P&L"
-          value={netPL >= 0 ? `+€${netPL.toFixed(0)}` : `-€${Math.abs(netPL).toFixed(0)}`}
+          value={formatCurrency(netPL, 0)}
         />
-        <StatCard label="Biggest Win" value={biggestWin > 0 ? `€${biggestWin}` : '—'} />
+        <StatCard label="Biggest Win" value={biggestWin > 0 ? formatWalletBalance(biggestWin) : '—'} />
       </div>
 
       <Card>
@@ -308,13 +314,13 @@ function WagerStats({ playerId }: { playerId: string }) {
                   <div key={w.id} className="flex items-center justify-between text-sm">
                     <div className="flex items-center gap-2">
                       <PlayerAvatar player={other} size="xs" />
-                      <span className="text-sm">{other.display_name}</span>
+                      <span className="text-sm">{profileDisplayName(other)}</span>
                     </div>
                     <span
                       className="font-bold"
                       style={{ color: isWin ? 'oklch(0.52 0.17 145)' : 'oklch(0.55 0.22 25)' }}
                     >
-                      {isWin ? `+€${w.amount}` : `-€${w.amount}`}
+                      {formatCurrency(isWin ? w.amount : -w.amount)}
                     </span>
                   </div>
                 )

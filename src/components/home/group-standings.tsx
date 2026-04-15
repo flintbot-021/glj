@@ -2,7 +2,7 @@ import { useRef, useState } from 'react'
 import { useAllGroupStandings } from '@/hooks/use-data'
 import { PlayerAvatar } from '@/components/ui/player-avatar'
 import { Skeleton } from '@/components/ui/skeleton'
-import { formatPoints } from '@/lib/format'
+import { formatPoints, profileDisplayName } from '@/lib/format'
 import { cn } from '@/lib/utils'
 
 export function GroupStandings() {
@@ -79,8 +79,8 @@ export function GroupStandings() {
                 >
                   <span className="text-xs font-bold text-white/40 w-4">{idx + 1}</span>
                   <PlayerAvatar player={s.player} size="sm" />
-                  <span className="flex-1 text-sm font-semibold text-white truncate">
-                    {s.player.display_name}
+                  <span className="flex-1 min-w-0 text-sm font-semibold text-white truncate">
+                    {profileDisplayName(s.player)}
                   </span>
                   <div className="flex gap-4 items-center w-28 justify-end">
                     <span className="text-xs text-white/60 w-12 text-center">

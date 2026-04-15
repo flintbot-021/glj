@@ -2,10 +2,14 @@
 
 export interface Profile {
   id: string
+  /** Auth login handle (stable key for seeds / admin). */
   display_name: string
+  /** Legal / display name shown in the app when set. */
+  full_name?: string
   initials: string
   email: string
-  handicap: number
+  /** Public URL for profile photo. If unset, UI uses a generated avatar from `display_name`. */
+  avatar_url?: string | null
   is_admin: boolean
   wallet_balance: number
   created_at: string
@@ -19,6 +23,8 @@ export interface Season {
   draw_points: number
   loss_points: number
   is_active: boolean
+  start_date?: string
+  end_date?: string
   created_at: string
 }
 
@@ -46,6 +52,8 @@ export interface GroupStanding {
   points: number
   bonus_points: number
   total_points: number
+  /** Set when computed via `computeGroupStandings` ordering. */
+  position?: number
 }
 
 // ─── Matchplay ─────────────────────────────────────────────────────────────────
@@ -89,7 +97,8 @@ export interface StrokeplayRound {
   sub_season_id: string
   course_name: string
   played_at: string
-  handicap_used: number
+  /** Course handicap for this round only (bonus strokeplay). */
+  course_handicap: number
   gross_score: number
   net_score: number
   counts_for_ranking: boolean
@@ -113,6 +122,8 @@ export interface KnockoutFixture {
   id: string
   season_id: string
   round: KnockoutRound
+  /** 1–4 for QF, 1–2 for SF, 1 for Final */
+  slot_index: number
   player_a_id?: string
   player_b_id?: string
   result?: 'win_a' | 'win_b'
@@ -332,9 +343,15 @@ export interface GroupWithStandings {
 
 export interface BonusLeagueEntry {
   player: Profile
+  /** Rounds counted for R1/R2 (active bonus leg only). */
   rounds: StrokeplayRound[]
-  best_net?: number
-  second_best_net?: number
+  r1_gross?: number
+  r1_net?: number
+  r2_gross?: number
+  r2_net?: number
+  /** Sum of counting net scores (one or two rounds in the leg). */
+  total_net?: number
+  /** Sum of `bonus_point_awards.points_awarded` this season (all legs). */
   bonus_points: number
   rank: number
 }
@@ -383,7 +400,7 @@ export interface MatchplayFormData {
 export interface StrokeplayFormData {
   course_name: string
   played_at: string
-  handicap_used: number
+  course_handicap: number
   gross_score: number
   sub_season_id: string
 }

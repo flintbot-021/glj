@@ -6,10 +6,10 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { ChevronLeft, CheckCircle2 } from 'lucide-react'
 import { useAuthStore } from '@/stores/auth-store'
-import { useUnplayedOpponents, useSubmitMatchplay } from '@/hooks/use-data'
-import { getGroupForPlayer } from '@/lib/mock-data'
+import { useUnplayedOpponents, useSubmitMatchplay, useGroupForPlayer } from '@/hooks/use-data'
 import { MATCHPLAY_MARGINS, KNOWN_COURSES } from '@/lib/constants'
 import { PlayerAvatar } from '@/components/ui/player-avatar'
+import { profileDisplayName } from '@/lib/format'
 import { cn } from '@/lib/utils'
 
 interface Props {
@@ -18,9 +18,9 @@ interface Props {
 }
 
 export function MatchplayForm({ onClose, onBack }: Props) {
-  const currentPlayer = useAuthStore((s) => s.currentPlayer)
-  const group = currentPlayer ? getGroupForPlayer(currentPlayer.id) : undefined
-  const { data: opponents = [] } = useUnplayedOpponents(currentPlayer?.id ?? '', group?.id ?? '')
+  const profile = useAuthStore((s) => s.profile)
+  const { data: group } = useGroupForPlayer(profile?.id)
+  const { data: opponents = [] } = useUnplayedOpponents(profile?.id ?? '', group?.id ?? '')
   const submitMatchplay = useSubmitMatchplay()
 
   const [step, setStep] = useState<'opponent' | 'result' | 'details' | 'success'>('opponent')
@@ -39,12 +39,12 @@ export function MatchplayForm({ onClose, onBack }: Props) {
   ).slice(0, 5)
 
   const handleSubmit = async () => {
-    if (!currentPlayer || !group) return
+    if (!profile || !group) return
     const finalResult: 'win_a' | 'win_b' | 'draw' =
       result === 'won' ? 'win_a' : result === 'lost' ? 'win_b' : 'draw'
 
     await submitMatchplay.mutateAsync({
-      player_a_id: currentPlayer.id,
+      player_a_id: profile.id,
       player_b_id: opponentId,
       group_id: group.id,
       result: finalResult,
@@ -125,8 +125,10 @@ export function MatchplayForm({ onClose, onBack }: Props) {
                 >
                   <PlayerAvatar player={opp} size="md" />
                   <div>
-                    <p className="font-semibold">{opp.display_name}</p>
-                    <p className="text-sm text-muted-foreground">HCP {opp.handicap}</p>
+                    <p className="font-semibold">{profileDisplayName(opp)}</p>
+                    {opp.full_name && (
+                      <p className="text-sm text-muted-foreground">{opp.full_name}</p>
+                    )}
                   </div>
                 </button>
               ))}
@@ -139,7 +141,7 @@ export function MatchplayForm({ onClose, onBack }: Props) {
         <div className="space-y-6">
           <div className="flex items-center gap-3 p-3 rounded-xl bg-muted/50">
             <PlayerAvatar player={selectedOpponent} size="sm" />
-            <span className="text-sm font-semibold">vs {selectedOpponent.display_name}</span>
+            <span className="text-sm font-semibold">vs {profileDisplayName(selectedOpponent)}</span>
           </div>
 
           <div>
@@ -167,7 +169,7 @@ export function MatchplayForm({ onClose, onBack }: Props) {
           {result && result !== 'drew' && (
             <div>
               <Label>Winning margin</Label>
-              <Select value={margin} onValueChange={setMargin}>
+              <Select value={margin} onValueChange={(v) => setMargin(v ?? '')}>
                 <SelectTrigger className="mt-1.5">
                   <SelectValue placeholder="Select margin..." />
                 </SelectTrigger>

@@ -1,6 +1,6 @@
 import { Trophy, Flag, DollarSign, Star, Swords } from 'lucide-react'
 import { PlayerAvatar } from '@/components/ui/player-avatar'
-import { formatRelativeTime } from '@/lib/format'
+import { formatRelativeTime, formatWalletBalance } from '@/lib/format'
 import type { FeedItemType } from '@/lib/types'
 import type { Profile } from '@/lib/types'
 
@@ -47,12 +47,14 @@ export function FeedItem({ type, actor, secondary_actor, description, metadata, 
       {/* Content */}
       <div className="flex-1 min-w-0">
         <p className="text-sm text-foreground leading-snug">{description}</p>
-        {type === 'wager' && metadata.amount && (
+        {type === 'wager' && metadata.amount != null && (
           <p
             className="text-xs font-bold mt-0.5"
             style={{ color: 'oklch(0.65 0.18 50)' }}
           >
-            €{String(metadata.amount)}
+            {Number.isFinite(Number(metadata.amount))
+              ? formatWalletBalance(Number(metadata.amount))
+              : '—'}
           </p>
         )}
         <p className="text-xs text-muted-foreground mt-0.5">{formatRelativeTime(created_at)}</p>

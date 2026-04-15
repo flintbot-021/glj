@@ -36,8 +36,8 @@ const NOTIF_COLORS: Record<NotificationType, string> = {
 export function NotificationCenter() {
   const open = useUIStore((s) => s.notificationsOpen)
   const close = useUIStore((s) => s.closeNotifications)
-  const currentPlayer = useAuthStore((s) => s.currentPlayer)
-  const { data: notifications = [] } = useNotifications(currentPlayer?.id ?? '')
+  const profile = useAuthStore((s) => s.profile)
+  const { data: notifications = [] } = useNotifications(profile?.id ?? '')
   const markRead = useMarkNotificationRead()
 
   return (
@@ -65,7 +65,10 @@ export function NotificationCenter() {
                     'w-full flex items-start gap-3 px-4 py-4 text-left transition-colors hover:bg-muted/50',
                     !notif.is_read && 'bg-primary/3'
                   )}
-                  onClick={() => markRead.mutate(notif.id)}
+                  onClick={() => {
+                    if (!profile) return
+                    markRead.mutate({ notificationId: notif.id, playerId: profile.id })
+                  }}
                 >
                   <div
                     className="h-9 w-9 rounded-full flex items-center justify-center flex-shrink-0 text-white"

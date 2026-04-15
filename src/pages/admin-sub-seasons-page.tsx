@@ -3,20 +3,20 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ChevronLeft } from 'lucide-react'
-import { useSubSeasons, useBonusLeague } from '@/hooks/use-data'
+import { useSubSeasons, useBonusLeague, useBonusPointAwards } from '@/hooks/use-data'
 import { PlayerAvatar } from '@/components/ui/player-avatar'
-import { formatDate, formatPoints } from '@/lib/format'
-import { BONUS_POINT_AWARDS } from '@/lib/mock-data'
+import { formatDate, formatPoints, profileDisplayName } from '@/lib/format'
 
 export function AdminSubSeasonsPage() {
   const navigate = useNavigate()
   const { data: subSeasons } = useSubSeasons()
   const { data: bonusLeague } = useBonusLeague()
+  const { data: bonusAwards = [] } = useBonusPointAwards()
 
   return (
     <div className="py-4">
       <div className="px-4 mb-5 flex items-center gap-3">
-        <Button variant="ghost" size="icon" onClick={() => navigate('/admin')} className="h-8 w-8">
+        <Button variant="ghost" size="icon" onClick={() => navigate('/admin/rtd')} className="h-8 w-8">
           <ChevronLeft className="h-4 w-4" />
         </Button>
         <h1 className="text-xl font-black">Sub-Seasons</h1>
@@ -52,14 +52,14 @@ export function AdminSubSeasonsPage() {
               {ss.status === 'closed' && (
                 <div className="space-y-2">
                   <p className="text-xs font-semibold text-muted-foreground">Bonus Awards</p>
-                  {BONUS_POINT_AWARDS.filter((a) => a.sub_season_id === ss.id).map((award) => {
+                  {bonusAwards.filter((a) => a.sub_season_id === ss.id).map((award) => {
                     const entry = bonusLeague?.find((e) => e.player.id === award.player_id)
                     if (!entry) return null
                     return (
                       <div key={award.id} className="flex items-center gap-2">
                         <span className="text-xs text-muted-foreground w-4">#{award.position}</span>
                         <PlayerAvatar player={entry.player} size="xs" />
-                        <span className="text-sm flex-1">{entry.player.display_name}</span>
+                        <span className="text-sm flex-1">{profileDisplayName(entry.player)}</span>
                         <span className="text-sm font-bold" style={{ color: 'oklch(0.91 0.19 106)' }}>
                           +{formatPoints(award.points_awarded)}
                         </span>

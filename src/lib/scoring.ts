@@ -1,4 +1,5 @@
 import { STABLEFORD_POINTS } from './constants'
+import { MATCH_PLAY_POINTS } from './league-rules'
 import type { TourHole } from './types'
 
 export function calculateNetScore(grossScore: number, handicap: number): number {
@@ -89,8 +90,13 @@ export function getMatchplayStatus(
 export function computeGroupStandings(
   players: import('./types').Profile[],
   results: import('./types').MatchplayResult[],
-  bonusPoints: Record<string, number>
+  bonusPoints: Record<string, number>,
+  matchPointsConfig: { winPoints: number; drawPoints: number } = {
+    winPoints: MATCH_PLAY_POINTS.win,
+    drawPoints: MATCH_PLAY_POINTS.draw,
+  }
 ) {
+  const { winPoints, drawPoints } = matchPointsConfig
   return players
     .map((player) => {
       const playerResults = results.filter(
@@ -112,7 +118,7 @@ export function computeGroupStandings(
         }
       })
 
-      const matchPoints = wins * 3 + draws * 1
+      const matchPoints = wins * winPoints + draws * drawPoints
       const bonus = bonusPoints[player.id] ?? 0
       const total = matchPoints + bonus
 

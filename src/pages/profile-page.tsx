@@ -7,30 +7,41 @@ import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Separator } from '@/components/ui/separator'
 import { useNavigate } from 'react-router'
-import { formatPoints, formatCurrency, formatDate } from '@/lib/format'
-import { PLAYERS } from '@/lib/mock-data'
-import { cn } from '@/lib/utils'
+import { formatPoints, formatCurrency, formatDate, formatWalletBalance, profileDisplayName } from '@/lib/format'
+import type { GroupStanding } from '@/lib/types'
 
 export function ProfilePage() {
-  const currentPlayer = useAuthStore((s) => s.currentPlayer)
-  const setCurrentPlayer = useAuthStore((s) => s.setCurrentPlayer)
+  const profile = useAuthStore((s) => s.profile)
+  const signOut = useAuthStore((s) => s.signOut)
   const navigate = useNavigate()
 
   const { data: allGroups } = useAllGroupStandings()
-  const { data: transactions = [], isLoading: txLoading } = useWalletTransactions(currentPlayer?.id ?? '')
-  const { data: rounds = [] } = usePlayerRounds(currentPlayer?.id ?? '')
+  const { data: transactions = [], isLoading: txLoading } = useWalletTransactions(profile?.id ?? '')
+  const { data: rounds = [] } = usePlayerRounds(profile?.id ?? '')
 
-  if (!currentPlayer) return null
+  if (!profile) return null
 
-  // Find standings
-  let standing: { wins: number; losses: number; draws: number; total_points: number; position: number; group_name: string } | null = null
-  allGroups?.forEach(({ group, standings }) => {
-    const entry = standings.find((s) => s.player.id === currentPlayer.id)
-    if (entry) {
-      const pos = standings.indexOf(entry) + 1
-      standing = { ...entry, position: pos, group_name: group.name }
+  const groupStanding = allGroups?.reduce<{
+    total_points: number
+    wins: number
+    losses: number
+    draws: number
+    position: number
+    group_name: string
+  } | null>((found, { group, standings }) => {
+    if (found) return found
+    const entry = standings.find((s) => s.player.id === profile.id) as GroupStanding | undefined
+    if (!entry) return null
+    const pos = standings.indexOf(entry) + 1
+    return {
+      total_points: entry.total_points,
+      wins: entry.wins,
+      losses: entry.losses,
+      draws: entry.draws,
+      position: pos,
+      group_name: group.name,
     }
-  })
+  }, null) ?? null
 
   return (
     <div className="py-4">
@@ -41,34 +52,36 @@ export function ProfilePage() {
           style={{ backgroundColor: 'oklch(0.29 0.072 160)' }}
         >
           <div className="flex items-center gap-4 mb-4">
-            <PlayerAvatar player={currentPlayer} size="xl" />
+            <PlayerAvatar player={profile} size="xl" />
             <div>
-              <h1 className="text-2xl font-black text-white">{currentPlayer.display_name}</h1>
-              <p className="text-sm text-white/60">HCP {currentPlayer.handicap}</p>
-              {currentPlayer.is_admin && (
+              <h1 className="text-2xl font-black text-white">{profileDisplayName(profile)}</h1>
+              {profile.full_name && (
+                <p className="text-sm text-white/60">{profile.display_name}</p>
+              )}
+              {profile.is_admin && (
                 <Badge className="mt-1 text-[10px] border-0 bg-white/20 text-white">Admin</Badge>
               )}
             </div>
           </div>
 
           {/* Stats row */}
-          {standing && (
+          {groupStanding && (
             <div className="grid grid-cols-3 gap-2">
               <div className="text-center p-2 rounded-xl" style={{ backgroundColor: 'oklch(0.23 0.06 160)' }}>
                 <p className="text-xl font-black" style={{ color: 'oklch(0.91 0.19 106)' }}>
-                  {formatPoints(standing.total_points)}
+                  {formatPoints(groupStanding.total_points)}
                 </p>
                 <p className="text-[10px] text-white/50 uppercase tracking-wide mt-0.5">Points</p>
               </div>
               <div className="text-center p-2 rounded-xl" style={{ backgroundColor: 'oklch(0.23 0.06 160)' }}>
                 <p className="text-xl font-black text-white">
-                  {standing.wins}-{standing.losses}-{standing.draws}
+                  {groupStanding.wins}-{groupStanding.losses}-{groupStanding.draws}
                 </p>
                 <p className="text-[10px] text-white/50 uppercase tracking-wide mt-0.5">W-L-D</p>
               </div>
               <div className="text-center p-2 rounded-xl" style={{ backgroundColor: 'oklch(0.23 0.06 160)' }}>
-                <p className="text-xl font-black text-white">#{standing.position}</p>
-                <p className="text-[10px] text-white/50 uppercase tracking-wide mt-0.5">{standing.group_name}</p>
+                <p className="text-xl font-black text-white">#{groupStanding.position}</p>
+                <p className="text-[10px] text-white/50 uppercase tracking-wide mt-0.5">{groupStanding.group_name}</p>
               </div>
             </div>
           )}
@@ -82,7 +95,7 @@ export function ProfilePage() {
             <div className="flex items-center justify-between">
               <CardTitle className="text-sm font-bold">Wallet</CardTitle>
               <span className="text-xl font-black" style={{ color: 'oklch(0.65 0.18 50)' }}>
-                €{currentPlayer.wallet_balance.toFixed(2)}
+                {formatWalletBalance(profile.wallet_balance)}
               </span>
             </div>
           </CardHeader>
@@ -148,45 +161,16 @@ export function ProfilePage() {
 
       <Separator className="mx-4" />
 
-      {/* Switch player (dev only) */}
-      <div className="px-4 mt-4">
-        <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">
-          Switch Player (Dev Mode)
-        </p>
-        <div className="space-y-2 max-h-48 overflow-y-auto">
-          {PLAYERS.map((p) => (
-            <button
-              key={p.id}
-              onClick={() => setCurrentPlayer(p)}
-              className={cn(
-                'w-full flex items-center gap-3 p-3 rounded-xl border transition-all text-left',
-                p.id === currentPlayer.id
-                  ? 'border-primary bg-primary/5'
-                  : 'border-border bg-card'
-              )}
-            >
-              <PlayerAvatar player={p} size="xs" />
-              <div className="flex-1">
-                <p className="text-sm font-semibold">{p.display_name}</p>
-                <p className="text-xs text-muted-foreground">HCP {p.handicap}</p>
-              </div>
-              {p.is_admin && <Badge variant="secondary" className="text-[10px]">Admin</Badge>}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {currentPlayer.is_admin && (
-        <div className="px-4 mt-4">
-          <Button
-            className="w-full"
-            variant="outline"
-            onClick={() => navigate('/admin')}
-          >
+      <div className="px-4 mt-4 space-y-2">
+        {profile.is_admin && (
+          <Button className="w-full" variant="outline" onClick={() => navigate('/admin')}>
             Admin Dashboard
           </Button>
-        </div>
-      )}
+        )}
+        <Button className="w-full" variant="ghost" onClick={() => void signOut()}>
+          Sign out
+        </Button>
+      </div>
     </div>
   )
 }

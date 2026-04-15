@@ -1,243 +1,415 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
-  PLAYERS,
-  GROUPS,
-  MATCHPLAY_RESULTS,
-  SUB_SEASONS,
-  STROKEPLAY_ROUNDS,
-  BONUS_POINT_AWARDS,
-  KNOCKOUT_FIXTURES,
-  WAGERS,
-  WALLET_TRANSACTIONS,
-  ACTIVITY_FEED,
-  NOTIFICATIONS,
-  TOUR_EVENT,
-  TOUR_PLAYERS,
-  TOUR_COURSE,
-  TOUR_HOLES,
-  TOUR_FORMATS,
-  TOUR_DAYS,
-  TOUR_MATCHES,
-  TOUR_MATCH_PLAYERS,
-  TOUR_CHUMPS_PICKS,
-  getPlayer,
-  getPlayersInGroup,
-} from '@/lib/mock-data'
-import { computeGroupStandings } from '@/lib/scoring'
-import type { Wager, WagerStatus, ActivityFeedItem, TourHoleScore } from '@/lib/types'
+  fetchActiveSeason,
+  listProfiles,
+  getProfile,
+  fetchGroupsForSeason,
+  buildGroupStandings,
+  buildAllGroupStandings,
+  fetchMatchplayForGroup,
+  fetchProfileMap,
+  fetchUnplayedOpponentProfiles,
+  fetchSubSeasonsForSeason,
+  fetchStrokeplayForSubSeasons,
+  fetchStrokeplayForPlayer,
+  fetchBonusAwardsForSubSeasons,
+  fetchKnockoutForSeason,
+  listWagers,
+  listWalletTransactions,
+  fetchActivityFeedPage,
+  listNotifications,
+  countUnreadNotifications,
+  fetchTourEvent,
+  fetchTourPlayers,
+  fetchTourCourses,
+  fetchTourFormats,
+  fetchTourDays,
+  fetchTourMatchesForDay,
+  fetchTourMatchPlayersForMatches,
+  fetchTourHolesForCourse,
+  fetchTourCourseById,
+  fetchTourHoleScores,
+  fetchTourChumpsPicks,
+  fetchGroupForPlayer,
+  fetchTourDayById,
+  fetchTourFormatById,
+  insertMatchplay,
+  insertStrokeplay,
+  insertActivityFeed,
+  insertWager,
+  updateWagerToActive,
+  deleteWager,
+  upsertTourHoleScore,
+  markNotificationRead,
+  closeBonusLegAndAssign,
+  updateSeason,
+  updateSubSeason,
+  fetchGroupsWithMembersForSeason,
+  fetchStrokeplayForSubSeason,
+  setPlayerGroupForSeason,
+  listAdminWalletLedger,
+  adminApplyWalletCredit,
+  insertKnockoutFixture,
+  updateKnockoutFixture,
+  deleteKnockoutFixture,
+} from '@/lib/supabase/api'
+import { getLadderSubSeasonId, getBestTwoRounds, ladderTotals } from '@/lib/bonus-ladder'
+import type { Wager, WagerStatus, ActivityFeedItem, TourTeam, BonusLeagueEntry } from '@/lib/types'
+import type { EnrichedWager, EnrichedMatchplayResult, EnrichedFeedItem } from '@/lib/types'
 
-const delay = (ms = 300) => new Promise((r) => setTimeout(r, ms))
+// ─── Season context ────────────────────────────────────────────────────────────
+
+export function useActiveSeason() {
+  return useQuery({
+    queryKey: ['active-season'],
+    queryFn: fetchActiveSeason,
+  })
+}
 
 // ─── Players ───────────────────────────────────────────────────────────────────
 
 export function usePlayers() {
   return useQuery({
     queryKey: ['players'],
-    queryFn: async () => {
-      await delay()
-      return PLAYERS
-    },
+    queryFn: listProfiles,
   })
 }
 
 export function usePlayer(id: string) {
   return useQuery({
     queryKey: ['player', id],
-    queryFn: async () => {
-      await delay(100)
-      return getPlayer(id)
-    },
+    queryFn: () => getProfile(id),
+    enabled: !!id,
   })
 }
 
 // ─── Season & Groups ───────────────────────────────────────────────────────────
 
 export function useGroups() {
+  const { data: season } = useActiveSeason()
   return useQuery({
-    queryKey: ['groups'],
-    queryFn: async () => {
-      await delay()
-      return GROUPS
-    },
+    queryKey: ['groups', season?.id],
+    queryFn: () => fetchGroupsForSeason(season!.id),
+    enabled: !!season?.id,
+  })
+}
+
+export function useGroupForPlayer(playerId: string | undefined) {
+  return useQuery({
+    queryKey: ['group-for-player', playerId],
+    queryFn: () => fetchGroupForPlayer(playerId!),
+    enabled: !!playerId,
   })
 }
 
 export function useGroupStandings(groupId: string) {
+  const { data: season } = useActiveSeason()
   return useQuery({
-    queryKey: ['group-standings', groupId],
-    queryFn: async () => {
-      await delay()
-      const players = getPlayersInGroup(groupId)
-      const results = MATCHPLAY_RESULTS.filter((r) => r.group_id === groupId)
-      const bonusMap: Record<string, number> = {}
-
-      BONUS_POINT_AWARDS.forEach((award) => {
-        bonusMap[award.player_id] = (bonusMap[award.player_id] ?? 0) + award.points_awarded
-      })
-
-      return computeGroupStandings(players, results, bonusMap)
-    },
+    queryKey: ['group-standings', groupId, season?.id],
+    queryFn: () => buildGroupStandings(groupId, season!.id),
+    enabled: !!season?.id && !!groupId,
   })
 }
 
 export function useAllGroupStandings() {
+  const { data: season } = useActiveSeason()
   return useQuery({
-    queryKey: ['all-group-standings'],
-    queryFn: async () => {
-      await delay()
-      const bonusMap: Record<string, number> = {}
-      BONUS_POINT_AWARDS.forEach((award) => {
-        bonusMap[award.player_id] = (bonusMap[award.player_id] ?? 0) + award.points_awarded
-      })
-
-      return GROUPS.map((group) => {
-        const players = getPlayersInGroup(group.id)
-        const results = MATCHPLAY_RESULTS.filter((r) => r.group_id === group.id)
-        const standings = computeGroupStandings(players, results, bonusMap)
-        return { group, standings }
-      })
-    },
+    queryKey: ['all-group-standings', season?.id],
+    queryFn: () => buildAllGroupStandings(season!.id),
+    enabled: !!season?.id,
   })
 }
 
 // ─── Matchplay ─────────────────────────────────────────────────────────────────
 
 export function useMatchplayResults(groupId?: string) {
+  const { data: season } = useActiveSeason()
   return useQuery({
-    queryKey: ['matchplay-results', groupId],
-    queryFn: async () => {
-      await delay()
-      const results = groupId
-        ? MATCHPLAY_RESULTS.filter((r) => r.group_id === groupId)
-        : MATCHPLAY_RESULTS
-      return results.map((r) => ({
+    queryKey: ['matchplay-results', groupId, season?.id],
+    queryFn: async (): Promise<EnrichedMatchplayResult[]> => {
+      const rows = await fetchMatchplayForGroup(groupId, season!.id)
+      const ids = new Set<string>()
+      rows.forEach((r) => {
+        ids.add(r.player_a_id)
+        ids.add(r.player_b_id)
+      })
+      const map = await fetchProfileMap([...ids])
+      return rows.map((r) => ({
         ...r,
-        player_a: getPlayer(r.player_a_id),
-        player_b: getPlayer(r.player_b_id),
+        player_a: map.get(r.player_a_id)!,
+        player_b: map.get(r.player_b_id)!,
       }))
     },
+    enabled: !!season?.id,
   })
 }
 
 export function useUnplayedOpponents(playerId: string, groupId: string) {
   return useQuery({
     queryKey: ['unplayed-opponents', playerId, groupId],
-    queryFn: async () => {
-      await delay(100)
-      const groupPlayers = getPlayersInGroup(groupId).filter((p) => p.id !== playerId)
-      const playedIds = MATCHPLAY_RESULTS.filter(
-        (r) =>
-          r.group_id === groupId &&
-          (r.player_a_id === playerId || r.player_b_id === playerId)
-      ).map((r) => (r.player_a_id === playerId ? r.player_b_id : r.player_a_id))
-
-      return groupPlayers.filter((p) => !playedIds.includes(p.id))
-    },
+    queryFn: () => fetchUnplayedOpponentProfiles(playerId, groupId),
+    enabled: !!playerId && !!groupId,
   })
 }
 
-// ─── Sub-Seasons & Bonus ───────────────────────────────────────────────────────
+// ─── Sub-Seasons & Bonus ────────────────────────────────────────────────────────
 
 export function useSubSeasons() {
+  const { data: season } = useActiveSeason()
   return useQuery({
-    queryKey: ['sub-seasons'],
-    queryFn: async () => {
-      await delay()
-      return SUB_SEASONS
-    },
+    queryKey: ['sub-seasons', season?.id],
+    queryFn: () => fetchSubSeasonsForSeason(season!.id),
+    enabled: !!season?.id,
   })
 }
 
 export function useOpenSubSeasons() {
+  const { data: season } = useActiveSeason()
   return useQuery({
-    queryKey: ['open-sub-seasons'],
+    queryKey: ['open-sub-seasons', season?.id],
     queryFn: async () => {
-      await delay(100)
-      return SUB_SEASONS.filter((ss) => ss.status === 'open')
+      const subs = await fetchSubSeasonsForSeason(season!.id)
+      return subs.filter((ss) => ss.status === 'open')
     },
+    enabled: !!season?.id,
+  })
+}
+
+export function useBonusPointAwards() {
+  const { data: season } = useActiveSeason()
+  return useQuery({
+    queryKey: ['bonus-point-awards', season?.id],
+    queryFn: async () => {
+      const subs = await fetchSubSeasonsForSeason(season!.id)
+      return fetchBonusAwardsForSubSeasons(subs.map((s) => s.id))
+    },
+    enabled: !!season?.id,
   })
 }
 
 export function useBonusLeague() {
+  const { data: season } = useActiveSeason()
   return useQuery({
-    queryKey: ['bonus-league'],
-    queryFn: async () => {
-      await delay()
-      return PLAYERS.map((player) => {
-        const allRounds = STROKEPLAY_ROUNDS.filter((r) => r.player_id === player.id)
-        const bonus = BONUS_POINT_AWARDS.filter((a) => a.player_id === player.id).reduce(
-          (sum, a) => sum + a.points_awarded,
-          0
-        )
+    queryKey: ['bonus-league', season?.id],
+    queryFn: async (): Promise<BonusLeagueEntry[]> => {
+      const players = await listProfiles()
+      const subs = await fetchSubSeasonsForSeason(season!.id)
+      const legId = getLadderSubSeasonId(subs)
+      const ssIds = subs.map((s) => s.id)
+      const allRounds = await fetchStrokeplayForSubSeasons(ssIds)
+      const bonusAwards = await fetchBonusAwardsForSubSeasons(ssIds)
+      const bonusMap: Record<string, number> = {}
+      bonusAwards.forEach((a) => {
+        bonusMap[a.player_id] = (bonusMap[a.player_id] ?? 0) + a.points_awarded
+      })
 
-        const sorted = [...allRounds].sort((a, b) => a.net_score - b.net_score)
+      const rows: Omit<BonusLeagueEntry, 'rank'>[] = players.map((player) => {
+        const rounds = legId
+          ? allRounds.filter((r) => r.player_id === player.id && r.sub_season_id === legId)
+          : []
+        const { r1, r2 } = getBestTwoRounds(rounds)
+        const total_net = ladderTotals(r1, r2)
         return {
           player,
-          rounds: allRounds,
-          best_net: sorted[0]?.net_score,
-          second_best_net: sorted[1]?.net_score,
-          bonus_points: bonus,
+          rounds,
+          r1_gross: r1?.gross_score,
+          r1_net: r1?.net_score,
+          r2_gross: r2?.gross_score,
+          r2_net: r2?.net_score,
+          total_net,
+          bonus_points: bonusMap[player.id] ?? 0,
         }
-      }).sort((a, b) => {
-        if (a.best_net === undefined && b.best_net === undefined) return 0
-        if (a.best_net === undefined) return 1
-        if (b.best_net === undefined) return -1
-        return a.best_net - b.best_net
       })
+
+      return rows
+        .sort((a, b) => {
+          const an = a.total_net
+          const bn = b.total_net
+          if (an === undefined && bn === undefined) return 0
+          if (an === undefined) return 1
+          if (bn === undefined) return -1
+          return an - bn
+        })
+        .map((e, i) => ({ ...e, rank: i + 1 }))
     },
+    enabled: !!season?.id,
+  })
+}
+
+export function useGroupsWithMembers() {
+  const { data: season } = useActiveSeason()
+  return useQuery({
+    queryKey: ['groups-with-members', season?.id],
+    queryFn: () => fetchGroupsWithMembersForSeason(season!.id),
+    enabled: !!season?.id,
+  })
+}
+
+export function useStrokeplayRoundsForSubSeason(subSeasonId: string | undefined) {
+  return useQuery({
+    queryKey: ['strokeplay-sub', subSeasonId],
+    queryFn: () => fetchStrokeplayForSubSeason(subSeasonId!),
+    enabled: !!subSeasonId,
+  })
+}
+
+export function useCloseBonusLeg() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: closeBonusLegAndAssign,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['sub-seasons'] })
+      qc.invalidateQueries({ queryKey: ['bonus-league'] })
+      qc.invalidateQueries({ queryKey: ['bonus-point-awards'] })
+      qc.invalidateQueries({ queryKey: ['all-group-standings'] })
+      qc.invalidateQueries({ queryKey: ['active-season'] })
+    },
+  })
+}
+
+export function useUpdateSeason() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ seasonId, patch }: { seasonId: string; patch: Parameters<typeof updateSeason>[1] }) =>
+      updateSeason(seasonId, patch),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['active-season'] })
+    },
+  })
+}
+
+export function useUpdateSubSeason() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      subSeasonId,
+      patch,
+    }: {
+      subSeasonId: string
+      patch: Parameters<typeof updateSubSeason>[1]
+    }) => updateSubSeason(subSeasonId, patch),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['sub-seasons'] })
+      qc.invalidateQueries({ queryKey: ['bonus-league'] })
+    },
+  })
+}
+
+export function useSetPlayerGroup() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (args: { seasonId: string; playerId: string; groupId: string }) =>
+      setPlayerGroupForSeason(args.seasonId, args.playerId, args.groupId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['groups-with-members'] })
+      qc.invalidateQueries({ queryKey: ['all-group-standings'] })
+      qc.invalidateQueries({ queryKey: ['group-for-player'] })
+    },
+  })
+}
+
+export function useAdminWalletLedger() {
+  return useQuery({
+    queryKey: ['admin-wallet-ledger'],
+    queryFn: listAdminWalletLedger,
+  })
+}
+
+export function useApplyAdminWalletCredit() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (args: { playerId: string; amount: number; note?: string }) =>
+      adminApplyWalletCredit(args.playerId, args.amount, args.note),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin-wallet-ledger'] })
+      qc.invalidateQueries({ queryKey: ['players'] })
+      qc.invalidateQueries({ queryKey: ['wallet-balance'] })
+      qc.invalidateQueries({ queryKey: ['wallet-transactions'] })
+    },
+  })
+}
+
+export function useInsertKnockoutFixture() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: insertKnockoutFixture,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['knockout-bracket'] }),
+  })
+}
+
+export function useUpdateKnockoutFixture() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (args: { id: string; patch: Parameters<typeof updateKnockoutFixture>[1] }) =>
+      updateKnockoutFixture(args.id, args.patch),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['knockout-bracket'] }),
+  })
+}
+
+export function useDeleteKnockoutFixture() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: deleteKnockoutFixture,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['knockout-bracket'] }),
   })
 }
 
 export function usePlayerRounds(playerId: string) {
   return useQuery({
     queryKey: ['player-rounds', playerId],
-    queryFn: async () => {
-      await delay()
-      return STROKEPLAY_ROUNDS.filter((r) => r.player_id === playerId)
-    },
+    queryFn: () => fetchStrokeplayForPlayer(playerId),
+    enabled: !!playerId,
   })
 }
 
-// ─── Knockout ──────────────────────────────────────────────────────────────────
+// ─── Knockout ─────────────────────────────────────────────────────────────────
 
 export function useKnockoutBracket() {
+  const { data: season } = useActiveSeason()
   return useQuery({
-    queryKey: ['knockout-bracket'],
+    queryKey: ['knockout-bracket', season?.id],
     queryFn: async () => {
-      await delay()
-      return KNOCKOUT_FIXTURES.map((f) => ({
+      const fixtures = await fetchKnockoutForSeason(season!.id)
+      const ids = new Set<string>()
+      fixtures.forEach((f) => {
+        if (f.player_a_id) ids.add(f.player_a_id)
+        if (f.player_b_id) ids.add(f.player_b_id)
+      })
+      const map = await fetchProfileMap([...ids])
+      return fixtures.map((f) => ({
         ...f,
-        player_a: f.player_a_id ? getPlayer(f.player_a_id) : undefined,
-        player_b: f.player_b_id ? getPlayer(f.player_b_id) : undefined,
+        player_a: f.player_a_id ? map.get(f.player_a_id) : undefined,
+        player_b: f.player_b_id ? map.get(f.player_b_id) : undefined,
       }))
     },
+    enabled: !!season?.id,
   })
 }
 
-// ─── Wagers ────────────────────────────────────────────────────────────────────
+// ─── Wagers ───────────────────────────────────────────────────────────────────
 
-// In-memory wager state for mutations
-let wagersState = [...WAGERS]
+async function enrichWagers(wagers: Wager[]): Promise<EnrichedWager[]> {
+  const ids = new Set<string>()
+  wagers.forEach((w) => {
+    ids.add(w.proposer_id)
+    ids.add(w.opponent_id)
+    if (w.result_winner_id) ids.add(w.result_winner_id)
+  })
+  const map = await fetchProfileMap([...ids])
+  return wagers.map((w) => ({
+    ...w,
+    proposer: map.get(w.proposer_id)!,
+    opponent: map.get(w.opponent_id)!,
+    result_winner: w.result_winner_id ? map.get(w.result_winner_id) : undefined,
+  }))
+}
 
 export function useWagers(playerId?: string, statusFilter?: WagerStatus[]) {
   return useQuery({
     queryKey: ['wagers', playerId, statusFilter],
     queryFn: async () => {
-      await delay()
-      let filtered = playerId
-        ? wagersState.filter((w) => w.proposer_id === playerId || w.opponent_id === playerId)
-        : wagersState
-
-      if (statusFilter && statusFilter.length > 0) {
-        filtered = filtered.filter((w) => statusFilter.includes(w.status))
-      }
-
-      return filtered.map((w) => ({
-        ...w,
-        proposer: getPlayer(w.proposer_id),
-        opponent: getPlayer(w.opponent_id),
-        result_winner: w.result_winner_id ? getPlayer(w.result_winner_id) : undefined,
-      })).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+      const rows = await listWagers(playerId, statusFilter)
+      return enrichWagers(rows)
     },
   })
 }
@@ -246,42 +418,25 @@ export function useWalletBalance(playerId: string) {
   return useQuery({
     queryKey: ['wallet-balance', playerId],
     queryFn: async () => {
-      await delay(100)
-      return getPlayer(playerId)?.wallet_balance ?? 0
+      const p = await getProfile(playerId)
+      return p?.wallet_balance ?? 0
     },
+    enabled: !!playerId,
   })
 }
 
 export function useWalletTransactions(playerId: string) {
   return useQuery({
     queryKey: ['wallet-transactions', playerId],
-    queryFn: async () => {
-      await delay()
-      return WALLET_TRANSACTIONS.filter((t) => t.player_id === playerId).sort(
-        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-      )
-    },
+    queryFn: () => listWalletTransactions(playerId),
+    enabled: !!playerId,
   })
 }
 
 export function useCreateWager() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async (data: { proposer_id: string; opponent_id: string; amount: number }) => {
-      await delay(500)
-      const newWager: Wager = {
-        id: `w${Date.now()}`,
-        proposer_id: data.proposer_id,
-        opponent_id: data.opponent_id,
-        amount: data.amount,
-        status: 'pending_acceptance',
-        proposer_confirmed: false,
-        opponent_confirmed: false,
-        created_at: new Date().toISOString(),
-      }
-      wagersState = [newWager, ...wagersState]
-      return newWager
-    },
+    mutationFn: insertWager,
     onSuccess: () => qc.invalidateQueries({ queryKey: ['wagers'] }),
   })
 }
@@ -289,12 +444,7 @@ export function useCreateWager() {
 export function useAcceptWager() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async (wagerId: string) => {
-      await delay(300)
-      wagersState = wagersState.map((w) =>
-        w.id === wagerId ? { ...w, status: 'active' as const } : w
-      )
-    },
+    mutationFn: updateWagerToActive,
     onSuccess: () => qc.invalidateQueries({ queryKey: ['wagers'] }),
   })
 }
@@ -302,137 +452,124 @@ export function useAcceptWager() {
 export function useDeclineWager() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async (wagerId: string) => {
-      await delay(300)
-      wagersState = wagersState.filter((w) => w.id !== wagerId)
-    },
+    mutationFn: deleteWager,
     onSuccess: () => qc.invalidateQueries({ queryKey: ['wagers'] }),
   })
 }
 
 // ─── Activity Feed ─────────────────────────────────────────────────────────────
 
-let feedState = [...ACTIVITY_FEED]
-
 export function useActivityFeed(page = 0) {
-  const PAGE_SIZE = 10
+  const { data: season } = useActiveSeason()
   return useQuery({
-    queryKey: ['activity-feed', page],
+    queryKey: ['activity-feed', page, season?.id],
     queryFn: async () => {
-      await delay()
-      const sorted = [...feedState].sort(
-        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-      )
-      const items = sorted.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)
-      return {
-        items: items.map((item) => ({
-          ...item,
-          actor: getPlayer(item.actor_id),
-          secondary_actor: item.secondary_actor_id ? getPlayer(item.secondary_actor_id) : undefined,
-        })),
-        hasMore: sorted.length > (page + 1) * PAGE_SIZE,
-        total: sorted.length,
-      }
+      const { items, hasMore, total } = await fetchActivityFeedPage(season!.id, page)
+      const ids = new Set<string>()
+      items.forEach((it) => {
+        ids.add(it.actor_id)
+        if (it.secondary_actor_id) ids.add(it.secondary_actor_id)
+      })
+      const map = await fetchProfileMap([...ids])
+      const enriched: EnrichedFeedItem[] = items.map((item) => ({
+        ...item,
+        actor: map.get(item.actor_id)!,
+        secondary_actor: item.secondary_actor_id ? map.get(item.secondary_actor_id) : undefined,
+      }))
+      return { items: enriched, hasMore, total }
     },
+    enabled: !!season?.id,
   })
 }
 
 export function useAddFeedItem() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async (item: Omit<ActivityFeedItem, 'id' | 'created_at'>) => {
-      await delay(100)
-      const newItem: ActivityFeedItem = {
-        ...item,
-        id: `af${Date.now()}`,
-        created_at: new Date().toISOString(),
-      }
-      feedState = [newItem, ...feedState]
-      return newItem
-    },
+    mutationFn: async (item: Omit<ActivityFeedItem, 'id' | 'created_at'>) => insertActivityFeed(item),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['activity-feed'] }),
   })
 }
 
 // ─── Notifications ─────────────────────────────────────────────────────────────
 
-let notificationsState = [...NOTIFICATIONS]
-
 export function useNotifications(playerId: string) {
   return useQuery({
     queryKey: ['notifications', playerId],
-    queryFn: async () => {
-      await delay()
-      return notificationsState
-        .filter((n) => n.recipient_id === playerId)
-        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-    },
+    queryFn: () => listNotifications(playerId),
+    enabled: !!playerId,
   })
 }
 
 export function useUnreadCount(playerId: string) {
   return useQuery({
     queryKey: ['unread-count', playerId],
-    queryFn: async () => {
-      await delay(50)
-      return notificationsState.filter((n) => n.recipient_id === playerId && !n.is_read).length
-    },
+    queryFn: () => countUnreadNotifications(playerId),
+    enabled: !!playerId,
   })
 }
 
 export function useMarkNotificationRead() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async (notificationId: string) => {
-      await delay(100)
-      notificationsState = notificationsState.map((n) =>
-        n.id === notificationId ? { ...n, is_read: true } : n
-      )
+    mutationFn: async ({
+      notificationId,
+      playerId,
+    }: {
+      notificationId: string
+      playerId: string
+    }) => {
+      await markNotificationRead(notificationId)
+      return playerId
     },
-    onSuccess: (_d, _v, ctx) => {
-      const playerId = (ctx as { playerId?: string })?.playerId
+    onSuccess: (playerId) => {
       qc.invalidateQueries({ queryKey: ['notifications'] })
-      if (playerId) qc.invalidateQueries({ queryKey: ['unread-count', playerId] })
+      qc.invalidateQueries({ queryKey: ['unread-count', playerId] })
     },
   })
 }
 
-// ─── Tour ──────────────────────────────────────────────────────────────────────
+// ─── Tour ─────────────────────────────────────────────────────────────────────
 
 export function useTourEvent() {
   return useQuery({
     queryKey: ['tour-event'],
-    queryFn: async () => {
-      await delay()
-      return TOUR_EVENT
-    },
+    queryFn: fetchTourEvent,
   })
 }
 
 export function useTourPlayers() {
+  const { data: ev } = useTourEvent()
   return useQuery({
-    queryKey: ['tour-players'],
+    queryKey: ['tour-players', ev?.id],
     queryFn: async () => {
-      await delay()
-      return TOUR_PLAYERS.map((tp) => ({
+      const tps = await fetchTourPlayers(ev!.id)
+      const map = await fetchProfileMap(tps.map((tp) => tp.player_id))
+      return tps.map((tp) => ({
         ...tp,
-        profile: getPlayer(tp.player_id),
+        profile: map.get(tp.player_id)!,
       }))
     },
+    enabled: !!ev?.id,
   })
 }
 
 export function useTourDays() {
+  const { data: ev } = useTourEvent()
   return useQuery({
-    queryKey: ['tour-days'],
+    queryKey: ['tour-days', ev?.id],
     queryFn: async () => {
-      await delay()
-      return TOUR_DAYS.map((d) => ({
+      const days = await fetchTourDays(ev!.id)
+      const formats = await fetchTourFormats()
+      const formatMap = new Map(formats.map((f) => [f.id, f]))
+      const courses = await fetchTourCourses(ev!.id)
+      const courseMap = new Map(courses.map((c) => [c.id, c]))
+      return days.map((d) => ({
         ...d,
-        format: TOUR_FORMATS.find((f) => f.id === d.format_id)!,
-        course: TOUR_COURSE,
+        format: formatMap.get(d.format_id)!,
+        course: courseMap.get(d.course_id)!,
       }))
     },
+    enabled: !!ev?.id,
   })
 }
 
@@ -440,172 +577,212 @@ export function useTourDayMatches(dayId: string) {
   return useQuery({
     queryKey: ['tour-day-matches', dayId],
     queryFn: async () => {
-      await delay()
-      const matches = TOUR_MATCHES.filter((m) => m.tour_day_id === dayId)
+      const dayRow = await fetchTourDayById(dayId)
+      if (!dayRow) return []
+      const [format, course] = await Promise.all([
+        fetchTourFormatById(dayRow.format_id),
+        fetchTourCourseById(dayRow.course_id),
+      ])
+      if (!format || !course) return []
+
+      const matches = await fetchTourMatchesForDay(dayId)
+      const matchIds = matches.map((m) => m.id)
+      const mps = await fetchTourMatchPlayersForMatches(matchIds)
+      const ev = await fetchTourEvent()
+      const tps = ev ? await fetchTourPlayers(ev.id) : []
+      const tpMap = new Map(tps.map((tp) => [tp.id, tp]))
+      const profileIds = [...new Set(tps.map((tp) => tp.player_id))]
+      const profiles = await fetchProfileMap(profileIds)
+
+      const day = { ...dayRow, format, course }
+
       return matches.map((match) => {
-        const matchPlayers = TOUR_MATCH_PLAYERS.filter((mp) => mp.match_id === match.id)
-        const playersA = matchPlayers
-          .filter((mp) => mp.team === match.team_a)
-          .map((mp) => ({
-            ...TOUR_PLAYERS.find((tp) => tp.id === mp.tour_player_id)!,
-            profile: getPlayer(TOUR_PLAYERS.find((tp) => tp.id === mp.tour_player_id)!.player_id),
-            pair_index: mp.pair_index,
-          }))
-        const playersB = matchPlayers
-          .filter((mp) => mp.team === match.team_b)
-          .map((mp) => ({
-            ...TOUR_PLAYERS.find((tp) => tp.id === mp.tour_player_id)!,
-            profile: getPlayer(TOUR_PLAYERS.find((tp) => tp.id === mp.tour_player_id)!.player_id),
-            pair_index: mp.pair_index,
-          }))
-        const day = TOUR_DAYS.find((d) => d.id === match.tour_day_id)!
-        const format = TOUR_FORMATS.find((f) => f.id === day.format_id)!
-        return { ...match, players_a: playersA, players_b: playersB, day, format }
+        const mpsFor = mps.filter((mp) => mp.match_id === match.id)
+        const buildSide = (team: TourTeam) =>
+          mpsFor
+            .filter((mp) => mp.team === team)
+            .map((mp) => {
+              const tp = tpMap.get(mp.tour_player_id)
+              if (!tp) throw new Error('tour_player missing')
+              return {
+                ...tp,
+                profile: profiles.get(tp.player_id)!,
+                pair_index: mp.pair_index,
+              }
+            })
+
+        return {
+          ...match,
+          players_a: buildSide(match.team_a),
+          players_b: buildSide(match.team_b),
+          day,
+          format,
+        }
       })
     },
+    enabled: !!dayId,
   })
 }
-
-let tourHoleScoresState: TourHoleScore[] = []
 
 export function useTourHoleScores(matchId: string) {
   return useQuery({
     queryKey: ['tour-hole-scores', matchId],
-    queryFn: async () => {
-      await delay()
-      return tourHoleScoresState.filter((s) => s.match_id === matchId)
-    },
+    queryFn: () => fetchTourHoleScores(matchId),
+    enabled: !!matchId,
   })
 }
 
 export function useSaveTourHoleScore() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async (score: Omit<TourHoleScore, 'id' | 'created_at'>) => {
-      await delay(200)
-      const existing = tourHoleScoresState.findIndex(
-        (s) => s.match_id === score.match_id && s.tour_player_id === score.tour_player_id && s.hole_number === score.hole_number
-      )
-      const newScore: TourHoleScore = {
-        ...score,
-        id: `ths${Date.now()}`,
-        created_at: new Date().toISOString(),
-      }
-      if (existing >= 0) {
-        tourHoleScoresState = tourHoleScoresState.map((s, i) => i === existing ? newScore : s)
-      } else {
-        tourHoleScoresState = [...tourHoleScoresState, newScore]
-      }
-      return newScore
-    },
+    mutationFn: upsertTourHoleScore,
     onSuccess: (_d, vars) => qc.invalidateQueries({ queryKey: ['tour-hole-scores', vars.match_id] }),
   })
 }
 
 export function useTourLeaderboard() {
+  const { data: ev } = useTourEvent()
   return useQuery({
-    queryKey: ['tour-leaderboard'],
+    queryKey: ['tour-leaderboard', ev?.id],
     queryFn: async () => {
-      await delay()
-      const day1Score = { '93s': 0, '91s': 0 }
-      const day2Score = { '93s': 0, '91s': 0 }
+      const days = await fetchTourDays(ev!.id)
+      const d1 = days.find((d) => d.day_number === 1)
+      const d2 = days.find((d) => d.day_number === 2)
+      const m1 = d1 ? await fetchTourMatchesForDay(d1.id) : []
+      const m2 = d2 ? await fetchTourMatchesForDay(d2.id) : []
 
-      TOUR_MATCHES.filter((m) => m.status === 'complete' && m.tour_day_id === 'td1').forEach((m) => {
-        if (m.team_a === '93s') {
-          day1Score['93s'] += m.team_a_points
-          day1Score['91s'] += m.team_b_points
-        } else {
-          day1Score['91s'] += m.team_a_points
-          day1Score['93s'] += m.team_b_points
+      const sumComplete = (matches: typeof m1) => {
+        let s93 = 0
+        let s91 = 0
+        for (const m of matches.filter((x) => x.status === 'complete')) {
+          if (m.team_a === '93s') {
+            s93 += m.team_a_points
+            s91 += m.team_b_points
+          } else {
+            s91 += m.team_a_points
+            s93 += m.team_b_points
+          }
         }
-      })
+        return { '93s': s93, '91s': s91 }
+      }
 
-      TOUR_MATCHES.filter((m) => m.status === 'complete' && m.tour_day_id === 'td2').forEach((m) => {
-        if (m.team_a === '93s') {
-          day2Score['93s'] += m.team_a_points
-          day2Score['91s'] += m.team_b_points
-        } else {
-          day2Score['91s'] += m.team_a_points
-          day2Score['93s'] += m.team_b_points
-        }
-      })
+      const day1Score = sumComplete(m1)
+      const day2Score = sumComplete(m2)
 
       return {
-        '93s': { day1: day1Score['93s'], day2: day2Score['93s'], total: day1Score['93s'] + day2Score['93s'] },
-        '91s': { day1: day1Score['91s'], day2: day2Score['91s'], total: day1Score['91s'] + day2Score['91s'] },
-        target: TOUR_EVENT.target_points,
+        '93s': {
+          day1: day1Score['93s'],
+          day2: day2Score['93s'],
+          total: day1Score['93s'] + day2Score['93s'],
+        },
+        '91s': {
+          day1: day1Score['91s'],
+          day2: day2Score['91s'],
+          total: day1Score['91s'] + day2Score['91s'],
+        },
+        target: ev!.target_points,
       }
     },
+    enabled: !!ev?.id,
   })
 }
 
 export function useTourGreenJacket() {
+  const { data: ev } = useTourEvent()
   return useQuery({
-    queryKey: ['tour-green-jacket'],
+    queryKey: ['tour-green-jacket', ev?.id],
     queryFn: async () => {
-      await delay()
-      return TOUR_PLAYERS.map((tp) => {
-        const profile = getPlayer(tp.player_id)
-        const day1Points = TOUR_MATCHES.filter(
-          (m) => m.tour_day_id === 'td1' && m.status === 'complete'
-        ).reduce((sum, m) => {
-          const mp = TOUR_MATCH_PLAYERS.find((p) => p.match_id === m.id && p.tour_player_id === tp.id)
-          if (!mp) return sum
-          return sum + (mp.team === m.team_a ? m.team_a_points : m.team_b_points)
-        }, 0)
+      const tps = await fetchTourPlayers(ev!.id)
+      const days = await fetchTourDays(ev!.id)
+      const d1 = days.find((d) => d.day_number === 1)
+      const matches = d1 ? await fetchTourMatchesForDay(d1.id).then((ms) => ms.filter((m) => m.status === 'complete')) : []
+      const matchIds = matches.map((m) => m.id)
+      const mps = matchIds.length ? await fetchTourMatchPlayersForMatches(matchIds) : []
+      const tpLookup = new Map<string, (typeof mps)[0]>()
+      for (const mp of mps) {
+        tpLookup.set(`${mp.match_id}:${mp.tour_player_id}`, mp)
+      }
 
-        return {
-          tour_player: tp,
-          profile,
-          day_points: [
-            { day: 1, points: day1Points },
-            { day: 2, points: 0 },
-            { day: 3, points: 0 },
-          ],
-          total_points: day1Points,
-        }
-      }).sort((a, b) => b.total_points - a.total_points)
+      const profiles = await fetchProfileMap(tps.map((tp) => tp.player_id))
+
+      const rows = tps
+        .map((tp) => {
+          let day1Points = 0
+          for (const m of matches) {
+            const mp = tpLookup.get(`${m.id}:${tp.id}`)
+            if (!mp) continue
+            day1Points += mp.team === m.team_a ? m.team_a_points : m.team_b_points
+          }
+          return {
+            tour_player: tp,
+            profile: profiles.get(tp.player_id)!,
+            day_points: [
+              { day: 1, points: day1Points },
+              { day: 2, points: 0 },
+              { day: 3, points: 0 },
+            ],
+            total_points: day1Points,
+            rank: 0,
+          }
+        })
+        .sort((a, b) => b.total_points - a.total_points)
         .map((entry, i) => ({ ...entry, rank: i + 1 }))
+
+      return rows
     },
+    enabled: !!ev?.id,
   })
 }
 
 export function useTourHoles() {
+  const { data: ev } = useTourEvent()
   return useQuery({
-    queryKey: ['tour-holes'],
+    queryKey: ['tour-holes', ev?.id],
     queryFn: async () => {
-      await delay(50)
-      return TOUR_HOLES
+      const days = await fetchTourDays(ev!.id)
+      const first = days[0]
+      if (!first) return []
+      return fetchTourHolesForCourse(first.course_id)
     },
+    enabled: !!ev?.id,
   })
 }
 
 export function useTourChumps() {
+  const { data: ev } = useTourEvent()
   return useQuery({
-    queryKey: ['tour-chumps'],
+    queryKey: ['tour-chumps', ev?.id],
     queryFn: async () => {
-      await delay()
-      return TOUR_CHUMPS_PICKS.map((pick) => {
-        const picker = getPlayer(pick.picker_id)
-        const picks = [pick.pick_1_id, pick.pick_2_id, pick.pick_3_id, pick.pick_4_id].map(
-          (tpId) => ({
-            ...TOUR_PLAYERS.find((tp) => tp.id === tpId)!,
-            profile: getPlayer(TOUR_PLAYERS.find((tp) => tp.id === tpId)!.player_id),
-          })
-        )
-        const captain = {
-          ...TOUR_PLAYERS.find((tp) => tp.id === pick.captain_id)!,
-          profile: getPlayer(TOUR_PLAYERS.find((tp) => tp.id === pick.captain_id)!.player_id),
+      const picks = await fetchTourChumpsPicks(ev!.id)
+      const tps = await fetchTourPlayers(ev!.id)
+      const tpMap = new Map(tps.map((tp) => [tp.id, tp]))
+      const profileIds = [...new Set(tps.map((tp) => tp.player_id))]
+      const profiles = await fetchProfileMap(profileIds)
+
+      return picks.map((pick) => {
+        const picker = profiles.get(pick.picker_id)!
+        const pickIds = [pick.pick_1_id, pick.pick_2_id, pick.pick_3_id, pick.pick_4_id]
+        const picksEnriched = pickIds.map((id) => {
+          const tp = tpMap.get(id)!
+          return { ...tp, profile: profiles.get(tp.player_id)! }
+        })
+        const captainTp = tpMap.get(pick.captain_id)!
+        const captain = { ...captainTp, profile: profiles.get(captainTp.player_id)! }
+        return {
+          pick,
+          picker,
+          picks: picksEnriched,
+          captain,
+          total_points: 0,
+          rank: 0,
         }
-        return { pick, picker, picks, captain, total_points: 0, rank: 0 }
       }).map((entry, i) => ({ ...entry, rank: i + 1 }))
     },
+    enabled: !!ev?.id,
   })
 }
 
-// ─── Matchplay mutation ────────────────────────────────────────────────────────
-
-let matchplayState = [...MATCHPLAY_RESULTS]
+// ─── Matchplay mutation ─────────────────────────────────────────────────────────
 
 export function useSubmitMatchplay() {
   const qc = useQueryClient()
@@ -619,29 +796,27 @@ export function useSubmitMatchplay() {
       course_name: string
       played_at: string
     }) => {
-      await delay(500)
-      const newResult = {
+      const season = await fetchActiveSeason()
+      if (!season) throw new Error('No active season')
+      const row = await insertMatchplay({
         ...data,
-        id: `mr${Date.now()}`,
-        season_id: 's1',
-        created_at: new Date().toISOString(),
-      }
-      matchplayState = [...matchplayState, newResult]
+        season_id: season.id,
+      })
 
-      feedState = [
-        {
-          id: `af${Date.now()}`,
-          season_id: 's1',
-          type: 'matchplay' as const,
-          actor_id: data.player_a_id,
-          secondary_actor_id: data.player_b_id,
-          description: `${getPlayer(data.player_a_id).display_name} vs ${getPlayer(data.player_b_id).display_name} at ${data.course_name}`,
-          metadata: { result: data.result, margin: data.margin, course: data.course_name },
-          created_at: new Date().toISOString(),
-        },
-        ...feedState,
-      ]
-      return newResult
+      const profiles = await fetchProfileMap([data.player_a_id, data.player_b_id])
+      const a = profiles.get(data.player_a_id)!
+      const b = profiles.get(data.player_b_id)!
+
+      await insertActivityFeed({
+        season_id: season.id,
+        type: 'matchplay',
+        actor_id: data.player_a_id,
+        secondary_actor_id: data.player_b_id,
+        description: `${a.display_name} vs ${b.display_name} at ${data.course_name}`,
+        metadata: { result: data.result, margin: data.margin, course: data.course_name },
+      })
+
+      return row
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['matchplay-results'] })
@@ -652,8 +827,6 @@ export function useSubmitMatchplay() {
   })
 }
 
-const strokeplayStateRef = { value: [...STROKEPLAY_ROUNDS] }
-
 export function useSubmitStrokeplay() {
   const qc = useQueryClient()
 
@@ -663,33 +836,29 @@ export function useSubmitStrokeplay() {
       sub_season_id: string
       course_name: string
       played_at: string
-      handicap_used: number
+      course_handicap: number
       gross_score: number
     }) => {
-      await delay(500)
-      const net_score = data.gross_score - data.handicap_used
-      const newRound = {
+      const season = await fetchActiveSeason()
+      if (!season) throw new Error('No active season')
+      const net_score = data.gross_score - data.course_handicap
+      const row = await insertStrokeplay({
         ...data,
-        id: `sr${Date.now()}`,
         net_score,
-        counts_for_ranking: true,
-        created_at: new Date().toISOString(),
-      }
-      strokeplayStateRef.value = [...strokeplayStateRef.value, newRound]
+      })
 
-      feedState = [
-        {
-          id: `af${Date.now()}`,
-          season_id: 's1',
-          type: 'strokeplay' as const,
+      const self = await getProfile(data.player_id)
+      if (self) {
+        await insertActivityFeed({
+          season_id: season.id,
+          type: 'strokeplay',
           actor_id: data.player_id,
-          description: `${getPlayer(data.player_id).display_name} shot a net ${net_score} at ${data.course_name}`,
+          description: `${self.display_name} shot a net ${net_score} at ${data.course_name}`,
           metadata: { net_score, course: data.course_name },
-          created_at: new Date().toISOString(),
-        },
-        ...feedState,
-      ]
-      return newRound
+        })
+      }
+
+      return row
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['player-rounds'] })

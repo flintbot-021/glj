@@ -1,4 +1,5 @@
 import { formatDistanceToNow, format, parseISO } from 'date-fns'
+import type { Profile } from '@/lib/types'
 
 export function formatRelativeTime(dateString: string): string {
   try {
@@ -16,14 +17,15 @@ export function formatDate(dateString: string, pattern = 'MMM d, yyyy'): string 
   }
 }
 
-export function formatCurrency(amount: number): string {
+/** ZAR display (South African Rand). */
+export function formatCurrency(amount: number, fractionDigits = 2): string {
   const abs = Math.abs(amount)
   const sign = amount < 0 ? '-' : amount > 0 ? '+' : ''
-  return `${sign}€${abs.toFixed(2)}`
+  return `${sign}R ${abs.toFixed(fractionDigits)}`
 }
 
 export function formatWalletBalance(amount: number): string {
-  return `€${amount.toFixed(2)}`
+  return `R ${amount.toFixed(2)}`
 }
 
 export function formatRecord(wins: number, losses: number, draws: number): string {
@@ -59,4 +61,16 @@ export function formatStableford(points: number): string {
 
 export function formatHandicap(handicap: number): string {
   return `HCP ${handicap}`
+}
+
+/** Primary label in UI: legal name when set, otherwise auth `display_name`. */
+export function profileDisplayName(p: Pick<Profile, 'display_name' | 'full_name'>): string {
+  const n = p.full_name?.trim()
+  return n || p.display_name
+}
+
+/** First word of the display label (e.g. tour chumps). */
+export function profileFirstName(p: Pick<Profile, 'display_name' | 'full_name'>): string {
+  const n = profileDisplayName(p)
+  return n.split(/\s+/)[0] ?? n
 }

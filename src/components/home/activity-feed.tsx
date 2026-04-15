@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useActivityFeed } from '@/hooks/use-data'
 import { FeedItem } from './feed-item'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -10,20 +10,20 @@ export function ActivityFeed() {
   const [allItems, setAllItems] = useState<ReturnType<typeof useActivityFeed>['data']>()
   const { data, isLoading } = useActivityFeed(page)
 
-  // Accumulate items across pages
-  if (data && (!allItems || page === 0)) {
-    setAllItems(data)
-  } else if (data && page > 0 && allItems) {
-    const existingIds = new Set(allItems.items.map((i) => i.id))
-    const newItems = data.items.filter((i) => !existingIds.has(i.id))
-    if (newItems.length > 0) {
-      setAllItems((prev) =>
-        prev
-          ? { ...data, items: [...prev.items, ...newItems] }
-          : data
-      )
+  useEffect(() => {
+    if (!data) return
+    if (page === 0) {
+      setAllItems(data)
+    } else {
+      setAllItems((prev) => {
+        if (!prev) return data
+        const existingIds = new Set(prev.items.map((i) => i.id))
+        const newItems = data.items.filter((i) => !existingIds.has(i.id))
+        if (newItems.length === 0) return prev
+        return { ...data, items: [...prev.items, ...newItems] }
+      })
     }
-  }
+  }, [data, page])
 
   const displayItems = allItems?.items ?? []
 

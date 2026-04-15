@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { profileDisplayName } from '@/lib/format'
 import type { TourTeam } from '@/lib/types'
 
 export function TourDayPage() {
@@ -64,7 +65,7 @@ export function TourDayPage() {
                       {match.players_a.map((p) => (
                         <div key={p.id} className="flex items-center gap-1.5">
                           <PlayerAvatar player={p.profile} size="xs" />
-                          <span className="text-xs font-medium">{p.profile.display_name}</span>
+                          <span className="text-xs font-medium">{profileDisplayName(p.profile)}</span>
                         </div>
                       ))}
                     </div>
@@ -106,7 +107,7 @@ export function TourDayPage() {
                     <div className="space-y-1">
                       {match.players_b.map((p) => (
                         <div key={p.id} className="flex items-center gap-1.5 justify-end">
-                          <span className="text-xs font-medium">{p.profile.display_name}</span>
+                          <span className="text-xs font-medium">{profileDisplayName(p.profile)}</span>
                           <PlayerAvatar player={p.profile} size="xs" />
                         </div>
                       ))}

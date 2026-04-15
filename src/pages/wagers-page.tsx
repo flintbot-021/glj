@@ -6,7 +6,7 @@ import { PlayerAvatar } from '@/components/ui/player-avatar'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
-import { formatRelativeTime, formatDate } from '@/lib/format'
+import { formatRelativeTime, formatDate, formatWalletBalance, profileDisplayName } from '@/lib/format'
 import { WAGER_STATUS_LABELS } from '@/lib/constants'
 import type { WagerStatus } from '@/lib/types'
 import { cn } from '@/lib/utils'
@@ -32,14 +32,14 @@ const STATUS_STYLES: Record<WagerStatus, { badge: string; dot: string }> = {
 }
 
 export function WagersPage() {
-  const currentPlayer = useAuthStore((s) => s.currentPlayer)
+  const profile = useAuthStore((s) => s.profile)
   const openScoreSheet = useUIStore((s) => s.openScoreSheet)
   const [activeTab, setActiveTab] = useState<FilterTab>('all')
   const acceptWager = useAcceptWager()
   const declineWager = useDeclineWager()
 
   const statusFilter = activeTab === 'all' ? undefined : [activeTab]
-  const { data: wagers = [], isLoading } = useWagers(currentPlayer?.id, statusFilter as WagerStatus[] | undefined)
+  const { data: wagers = [], isLoading } = useWagers(profile?.id, statusFilter as WagerStatus[] | undefined)
 
   return (
     <div className="py-4">
@@ -96,7 +96,7 @@ export function WagersPage() {
           </div>
         ) : (
           wagers.map((wager) => {
-            const isProposer = wager.proposer_id === currentPlayer?.id
+            const isProposer = wager.proposer_id === profile?.id
             const counterpart = isProposer ? wager.opponent : wager.proposer
             const styles = STATUS_STYLES[wager.status]
 
@@ -107,7 +107,7 @@ export function WagersPage() {
                   <div className="flex items-center gap-2.5">
                     <PlayerAvatar player={counterpart} size="sm" />
                     <div>
-                      <p className="text-sm font-semibold">{counterpart.display_name}</p>
+                      <p className="text-sm font-semibold">{profileDisplayName(counterpart)}</p>
                       <p className="text-xs text-muted-foreground">
                         {isProposer ? 'You challenged' : 'Challenged you'}
                         {' · '}
@@ -117,7 +117,7 @@ export function WagersPage() {
                   </div>
                   <div className="text-right">
                     <p className="text-lg font-black" style={{ color: 'oklch(0.65 0.18 50)' }}>
-                      €{wager.amount.toFixed(2)}
+                      {formatWalletBalance(wager.amount)}
                     </p>
                   </div>
                 </div>
@@ -133,7 +133,7 @@ export function WagersPage() {
                   </Badge>
                   {wager.result_winner && (
                     <span className="text-xs text-muted-foreground">
-                      Won by {wager.result_winner.display_name} · {wager.result_margin}
+                      Won by {profileDisplayName(wager.result_winner)} · {wager.result_margin}
                       {wager.result_played_at && ` · ${formatDate(wager.result_played_at)}`}
                     </span>
                   )}

@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router'
 import { useTourDayMatches, useTourHoles, useTourHoleScores, useSaveTourHoleScore } from '@/hooks/use-data'
-import { TOUR_DAYS } from '@/lib/mock-data'
+import { useTourDays } from '@/hooks/use-data'
 import { Button } from '@/components/ui/button'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { profileDisplayName } from '@/lib/format'
 import { computeTourHoleScore } from '@/lib/scoring'
 import type { TourTeam } from '@/lib/types'
 
@@ -15,15 +16,11 @@ export function TourScoringPage() {
   const { data: holes = [] } = useTourHoles()
   const { data: holeScores = [] } = useTourHoleScores(matchId ?? '')
   const saveScore = useSaveTourHoleScore()
+  const { data: tourDays = [] } = useTourDays()
 
-  // Get match from any day
-  const dayMatches = [
-    ...([1, 2, 3].map((n) => {
-      const day = TOUR_DAYS.find((d) => d.day_number === n)
-      return day?.id
-    }))
-  ]
-    .filter(Boolean)
+  const dayMatches = [1, 2, 3]
+    .map((n) => tourDays.find((d) => d.day_number === n)?.id)
+    .filter((id): id is string => Boolean(id))
 
   const { data: d1Matches = [] } = useTourDayMatches(dayMatches[0] ?? '')
   const { data: d2Matches = [] } = useTourDayMatches(dayMatches[1] ?? '')
@@ -146,7 +143,7 @@ export function TourScoringPage() {
                     >
                       {player.team}
                     </span>
-                    <span className="font-bold text-sm">{player.profile.display_name}</span>
+                    <span className="font-bold text-sm">{profileDisplayName(player.profile)}</span>
                     <span className="text-xs text-muted-foreground">HCP {player.locked_handicap}</span>
                   </div>
                   {previewScore && (

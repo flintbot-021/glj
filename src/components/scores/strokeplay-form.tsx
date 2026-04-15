@@ -15,7 +15,7 @@ interface Props {
 }
 
 export function StrokeplayForm({ onClose, onBack }: Props) {
-  const currentPlayer = useAuthStore((s) => s.currentPlayer)
+  const profile = useAuthStore((s) => s.profile)
   const { data: openSubSeasons = [] } = useOpenSubSeasons()
   const submitStrokeplay = useSubmitStrokeplay()
 
@@ -23,24 +23,25 @@ export function StrokeplayForm({ onClose, onBack }: Props) {
   const [courseInput, setCourseInput] = useState('')
   const [showSuggestions, setShowSuggestions] = useState(false)
   const [date, setDate] = useState(new Date().toISOString().split('T')[0])
-  const [handicap, setHandicap] = useState(String(currentPlayer?.handicap ?? 0))
+  const [courseHandicap, setCourseHandicap] = useState('')
   const [gross, setGross] = useState('')
   const [subSeasonId, setSubSeasonId] = useState(openSubSeasons[0]?.id ?? '')
   const [success, setSuccess] = useState(false)
 
-  const netScore = gross && handicap ? Number(gross) - Number(handicap) : null
+  const netScore =
+    gross && courseHandicap !== '' ? Number(gross) - Number(courseHandicap) : null
   const courseSuggestions = KNOWN_COURSES.filter(
     (c) => c.toLowerCase().includes(courseInput.toLowerCase()) && courseInput.length > 1
   ).slice(0, 5)
 
   const handleSubmit = async () => {
-    if (!currentPlayer) return
+    if (!profile) return
     await submitStrokeplay.mutateAsync({
-      player_id: currentPlayer.id,
+      player_id: profile.id,
       sub_season_id: subSeasonId,
       course_name: course || courseInput,
       played_at: date,
-      handicap_used: Number(handicap),
+      course_handicap: Number(courseHandicap),
       gross_score: Number(gross),
     })
     setSuccess(true)
@@ -60,7 +61,7 @@ export function StrokeplayForm({ onClose, onBack }: Props) {
               Net {netScore}
             </p>
             <p className="text-sm text-muted-foreground mt-1">
-              {gross} gross — {handicap} HCP
+              {gross} gross — course HCP {courseHandicap}
             </p>
           </div>
         )}
@@ -87,7 +88,7 @@ export function StrokeplayForm({ onClose, onBack }: Props) {
         {openSubSeasons.length > 0 && (
           <div>
             <Label>Sub-season</Label>
-            <Select value={subSeasonId} onValueChange={setSubSeasonId}>
+            <Select value={subSeasonId} onValueChange={(v) => setSubSeasonId(v ?? '')}>
               <SelectTrigger className="mt-1.5">
                 <SelectValue placeholder="Select sub-season..." />
               </SelectTrigger>
@@ -144,14 +145,15 @@ export function StrokeplayForm({ onClose, onBack }: Props) {
         {/* Scores side by side */}
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <Label>Handicap used</Label>
+            <Label>Course handicap</Label>
             <Input
               type="number"
               className="mt-1.5"
-              value={handicap}
-              onChange={(e) => setHandicap(e.target.value)}
+              value={courseHandicap}
+              onChange={(e) => setCourseHandicap(e.target.value)}
               min={0}
               max={54}
+              placeholder="This round"
             />
           </div>
           <div>
@@ -183,7 +185,13 @@ export function StrokeplayForm({ onClose, onBack }: Props) {
 
         <Button
           onClick={handleSubmit}
-          disabled={!gross || !subSeasonId || (!course && !courseInput) || submitStrokeplay.isPending}
+          disabled={
+            !gross ||
+            courseHandicap === '' ||
+            !subSeasonId ||
+            (!course && !courseInput) ||
+            submitStrokeplay.isPending
+          }
           className="w-full"
           style={{ backgroundColor: 'oklch(0.91 0.19 106)', color: 'oklch(0.20 0.07 150)' }}
         >

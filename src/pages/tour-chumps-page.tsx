@@ -4,6 +4,7 @@ import { PlayerAvatar } from '@/components/ui/player-avatar'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ChevronLeft, Star } from 'lucide-react'
+import { profileDisplayName, profileFirstName } from '@/lib/format'
 import type { TourTeam } from '@/lib/types'
 
 export function TourChumpsPage() {
@@ -39,7 +40,7 @@ export function TourChumpsPage() {
                 <span className="text-xs font-bold text-muted-foreground">#{p.seed}</span>
                 <PlayerAvatar player={p.profile} size="xs" />
                 <span className="text-[9px] font-semibold text-center leading-tight" style={{ maxWidth: 56 }}>
-                  {p.profile.display_name.split(' ')[0]}
+                  {profileFirstName(p.profile)}
                 </span>
                 <span
                   className="text-[8px] font-black px-1 rounded text-white"
@@ -71,7 +72,7 @@ export function TourChumpsPage() {
                     {idx + 1}
                   </span>
                   <PlayerAvatar player={entry.picker} size="sm" />
-                  <span className="font-bold text-sm">{entry.picker.display_name}</span>
+                  <span className="font-bold text-sm">{profileDisplayName(entry.picker)}</span>
                 </div>
                 <span className="text-lg font-black" style={{ color: 'oklch(0.91 0.19 106)' }}>
                   {entry.total_points} pts
@@ -99,7 +100,7 @@ export function TourChumpsPage() {
                       )}
                       <PlayerAvatar player={pick.profile} size="xs" />
                       <span className="text-[9px] font-semibold text-center leading-tight">
-                        {pick.profile.display_name.split(' ')[0]}
+                        {profileFirstName(pick.profile)}
                       </span>
                       <span
                         className="text-[8px] font-black px-1 rounded text-white"
