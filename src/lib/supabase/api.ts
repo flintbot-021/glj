@@ -8,6 +8,7 @@ import type {
   Profile,
   Season,
   WagerStatus,
+  TeamWager,
   KnockoutFixture,
   KnockoutRound,
   WalletTransaction,
@@ -26,6 +27,7 @@ import {
   mapBonusAward,
   mapKnockoutFixture,
   mapWager,
+  mapTeamWager,
   mapWalletTx,
   mapFeedItem,
   mapNotification,
@@ -46,6 +48,16 @@ function throwOnErr<T>(hint: string, res: { data: T | null; error: { message: st
   if (res.error) throw new Error(`${hint}: ${res.error.message}`)
   if (res.data === null || res.data === undefined) throw new Error(`${hint}: no data`)
   return res.data
+}
+
+function firstRpcRow(data: unknown): Record<string, unknown> | null {
+  if (data == null) return null
+  if (Array.isArray(data)) {
+    const row = data[0]
+    return row && typeof row === 'object' ? (row as Record<string, unknown>) : null
+  }
+  if (typeof data === 'object') return data as Record<string, unknown>
+  return null
 }
 
 export async function listProfiles(): Promise<Profile[]> {
@@ -258,6 +270,21 @@ export async function listWagers(playerId?: string, statusFilter?: WagerStatus[]
   const res = await q
   if (res.error) throw new Error(res.error.message)
   return (res.data as Record<string, unknown>[]).map(mapWager)
+}
+
+export async function listTeamWagers(playerId?: string, statusFilter?: WagerStatus[]) {
+  let q = supabase.from('team_wagers').select('*').order('created_at', { ascending: false })
+  if (playerId) {
+    q = q.or(
+      `team_a_p1.eq.${playerId},team_a_p2.eq.${playerId},team_b_p1.eq.${playerId},team_b_p2.eq.${playerId}`,
+    )
+  }
+  if (statusFilter && statusFilter.length > 0) {
+    q = q.in('status', statusFilter)
+  }
+  const res = await q
+  if (res.error) throw new Error(res.error.message)
+  return (res.data as Record<string, unknown>[]).map(mapTeamWager)
 }
 
 export async function listWalletTransactions(playerId: string) {
@@ -517,8 +544,138 @@ export async function updateWagerToActive(wagerId: string) {
 }
 
 export async function deleteWager(wagerId: string) {
-  const res = await supabase.from('wagers').delete().eq('id', wagerId)
+  const res = await supabase.from('wagers').delete().eq('id', wagerId).select('id').maybeSingle()
   if (res.error) throw new Error(res.error.message)
+  if (!res.data) {
+    throw new Error(
+      'Could not remove this wager. It may have already been accepted, or you may not have permission.',
+    )
+  }
+}
+
+export async function submitWagerOutcome(data: {
+  wagerId: string
+  resultWinnerId: string | null
+  resultMargin: string
+  resultCourse: string
+  resultPlayedAt: string
+}) {
+  const res = await supabase.rpc('submit_wager_outcome', {
+    p_wager_id: data.wagerId,
+    p_result_winner_id: data.resultWinnerId,
+    p_result_margin: data.resultMargin,
+    p_result_course: data.resultCourse,
+    p_result_played_at: data.resultPlayedAt,
+  })
+  if (res.error) throw new Error(res.error.message)
+  const row = firstRpcRow(res.data)
+  if (!row) throw new Error('submit_wager_outcome returned no row')
+  return mapWager(row)
+}
+
+export async function confirmWagerOutcome(wagerId: string) {
+  const res = await supabase.rpc('confirm_wager_outcome', { p_wager_id: wagerId })
+  if (res.error) throw new Error(res.error.message)
+  const row = firstRpcRow(res.data)
+  if (!row) throw new Error('confirm_wager_outcome returned no row')
+  return mapWager(row)
+}
+
+export async function disputeWagerOutcome(wagerId: string) {
+  const res = await supabase.rpc('dispute_wager_outcome', { p_wager_id: wagerId })
+  if (res.error) throw new Error(res.error.message)
+  const row = firstRpcRow(res.data)
+  if (!row) throw new Error('dispute_wager_outcome returned no row')
+  return mapWager(row)
+}
+
+export async function reopenDisputedWager(wagerId: string) {
+  const res = await supabase.rpc('reopen_disputed_wager', { p_wager_id: wagerId })
+  if (res.error) throw new Error(res.error.message)
+  const row = firstRpcRow(res.data)
+  if (!row) throw new Error('reopen_disputed_wager returned no row')
+  return mapWager(row)
+}
+
+export async function insertTeamWager(data: {
+  created_by: string
+  team_a_p1: string
+  team_a_p2: string
+  team_b_p1: string
+  team_b_p2: string
+  amount: number
+}): Promise<TeamWager> {
+  const res = await supabase
+    .from('team_wagers')
+    .insert({
+      ...data,
+      status: 'pending_acceptance',
+    })
+    .select('*')
+    .single()
+  return mapTeamWager(throwOnErr('insertTeamWager', res) as unknown as Record<string, unknown>)
+}
+
+export async function deleteTeamWager(teamWagerId: string) {
+  const res = await supabase.from('team_wagers').delete().eq('id', teamWagerId).select('id').maybeSingle()
+  if (res.error) throw new Error(res.error.message)
+  if (!res.data) {
+    throw new Error(
+      'Could not remove this team wager. It may no longer be pending, or you may not have permission.',
+    )
+  }
+}
+
+export async function acceptTeamWager(teamWagerId: string) {
+  const res = await supabase.rpc('accept_team_wager', { p_team_wager_id: teamWagerId })
+  if (res.error) throw new Error(res.error.message)
+  const row = firstRpcRow(res.data)
+  if (!row) throw new Error('accept_team_wager returned no row')
+  return mapTeamWager(row)
+}
+
+export async function submitTeamWagerOutcome(data: {
+  teamWagerId: string
+  resultWinnerTeam: 'a' | 'b' | null
+  resultMargin: string
+  resultCourse: string
+  resultPlayedAt: string
+}) {
+  const res = await supabase.rpc('submit_team_wager_outcome', {
+    p_team_wager_id: data.teamWagerId,
+    p_result_winner_team: data.resultWinnerTeam,
+    p_result_margin: data.resultMargin,
+    p_result_course: data.resultCourse,
+    p_result_played_at: data.resultPlayedAt,
+  })
+  if (res.error) throw new Error(res.error.message)
+  const row = firstRpcRow(res.data)
+  if (!row) throw new Error('submit_team_wager_outcome returned no row')
+  return mapTeamWager(row)
+}
+
+export async function confirmTeamWagerOutcome(teamWagerId: string) {
+  const res = await supabase.rpc('confirm_team_wager_outcome', { p_team_wager_id: teamWagerId })
+  if (res.error) throw new Error(res.error.message)
+  const row = firstRpcRow(res.data)
+  if (!row) throw new Error('confirm_team_wager_outcome returned no row')
+  return mapTeamWager(row)
+}
+
+export async function disputeTeamWagerOutcome(teamWagerId: string) {
+  const res = await supabase.rpc('dispute_team_wager_outcome', { p_team_wager_id: teamWagerId })
+  if (res.error) throw new Error(res.error.message)
+  const row = firstRpcRow(res.data)
+  if (!row) throw new Error('dispute_team_wager_outcome returned no row')
+  return mapTeamWager(row)
+}
+
+export async function reopenDisputedTeamWager(teamWagerId: string) {
+  const res = await supabase.rpc('reopen_disputed_team_wager', { p_team_wager_id: teamWagerId })
+  if (res.error) throw new Error(res.error.message)
+  const row = firstRpcRow(res.data)
+  if (!row) throw new Error('reopen_disputed_team_wager returned no row')
+  return mapTeamWager(row)
 }
 
 export async function upsertTourHoleScore(data: {

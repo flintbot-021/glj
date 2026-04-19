@@ -160,6 +160,27 @@ export interface Wager {
   created_at: string
 }
 
+export type TeamWagerWinner = 'a' | 'b'
+
+export interface TeamWager {
+  id: string
+  created_by: string
+  team_a_p1: string
+  team_a_p2: string
+  team_b_p1: string
+  team_b_p2: string
+  amount: number
+  status: WagerStatus
+  result_winner_team?: TeamWagerWinner | null
+  result_margin?: string
+  result_course?: string
+  result_played_at?: string
+  team_a_confirmed: boolean
+  team_b_confirmed: boolean
+  settled_at?: string
+  created_at: string
+}
+
 export type WalletTransactionType = 'wager_win' | 'wager_loss' | 'admin_credit' | 'admin_debit'
 
 export interface WalletTransaction {
@@ -336,6 +357,13 @@ export interface EnrichedWager extends Wager {
   proposer: Profile
   opponent: Profile
   result_winner?: Profile
+}
+
+export interface EnrichedTeamWager extends TeamWager {
+  team_a_p1_profile: Profile
+  team_a_p2_profile: Profile
+  team_b_p1_profile: Profile
+  team_b_p2_profile: Profile
 }
 
 export interface EnrichedFeedItem extends ActivityFeedItem {

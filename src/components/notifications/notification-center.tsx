@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { useUIStore } from '@/stores/ui-store'
 import { useAuthStore } from '@/stores/auth-store'
@@ -20,6 +21,19 @@ const NOTIF_ICONS: Record<NotificationType, React.ReactNode> = {
   tour_update: <Flag className="h-4 w-4" />,
 }
 
+const NOTIF_ROUTES: Record<NotificationType, string> = {
+  wager_request: '/wagers',
+  wager_accepted: '/wagers',
+  wager_declined: '/wagers',
+  wager_result: '/wagers',
+  wager_confirmed: '/wagers',
+  wager_disputed: '/wagers',
+  matchplay_result: '/',
+  sub_season_closed: '/',
+  bracket_set: '/bracket',
+  tour_update: '/tour',
+}
+
 const NOTIF_COLORS: Record<NotificationType, string> = {
   wager_request: 'oklch(0.65 0.18 50)',
   wager_accepted: 'oklch(0.52 0.17 145)',
@@ -39,6 +53,7 @@ export function NotificationCenter() {
   const profile = useAuthStore((s) => s.profile)
   const { data: notifications = [] } = useNotifications(profile?.id ?? '')
   const markRead = useMarkNotificationRead()
+  const navigate = useNavigate()
 
   return (
     <Sheet open={open} onOpenChange={(v) => !v && close()}>
@@ -68,6 +83,8 @@ export function NotificationCenter() {
                   onClick={() => {
                     if (!profile) return
                     markRead.mutate({ notificationId: notif.id, playerId: profile.id })
+                    navigate(NOTIF_ROUTES[notif.type])
+                    close()
                   }}
                 >
                   <div

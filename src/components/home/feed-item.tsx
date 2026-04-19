@@ -1,6 +1,6 @@
 import { Trophy, Flag, DollarSign, Star, Swords } from 'lucide-react'
 import { PlayerAvatar } from '@/components/ui/player-avatar'
-import { formatRelativeTime, formatWalletBalance, profileDisplayName } from '@/lib/format'
+import { formatRelativeTime, profileDisplayName } from '@/lib/format'
 import type { FeedItemType } from '@/lib/types'
 import type { Profile } from '@/lib/types'
 
@@ -108,6 +108,38 @@ function strokeplayFeedLines(
   return { title, subtitle }
 }
 
+function wagerFeedLines(
+  metadata: Record<string, unknown>,
+  description: string,
+): { title: string; result: string | null; money: string | null; halved: boolean; course: string | null } {
+  const matchup = description.split(' · ')[0] ?? description
+
+  const amount = metadata.amount != null && Number.isFinite(Number(metadata.amount))
+    ? Number(metadata.amount)
+    : null
+  const halved = metadata.halved === true
+  const isTeam = metadata.team_wager === true
+  const margin = metadata.margin != null ? String(metadata.margin).trim() : ''
+  const course = metadata.course != null ? String(metadata.course).trim() : ''
+
+  const resultSegment = description.split(' · ')[1] ?? ''
+  const result = resultSegment
+    ? (margin && !resultSegment.toLowerCase().includes(margin.toLowerCase())
+      ? `${resultSegment} · ${margin}`
+      : resultSegment)
+    : null
+
+  let money: string | null = null
+  if (halved) {
+    money = 'No transfer'
+  } else if (amount != null) {
+    const total = isTeam ? amount * 2 : amount
+    money = `R ${total % 1 === 0 ? total.toFixed(0) : total.toFixed(2)}`
+  }
+
+  return { title: matchup, result, money, halved, course: course || null }
+}
+
 export function FeedItem({ type, actor, secondary_actor, description, metadata, created_at }: FeedItemProps) {
   const matchplay =
     type === 'matchplay'
@@ -116,19 +148,26 @@ export function FeedItem({ type, actor, secondary_actor, description, metadata, 
   const strokeplay =
     type === 'strokeplay' ? strokeplayFeedLines(actor, metadata, description) : null
 
+  const wager =
+    type === 'wager' ? wagerFeedLines(metadata, description) : null
+
   const primaryText =
     type === 'matchplay' && matchplay
       ? matchplay.title
       : type === 'strokeplay' && strokeplay
         ? strokeplay.title
-        : description
+        : type === 'wager' && wager
+          ? wager.title
+          : description
 
   const secondaryText =
     type === 'matchplay' && matchplay
       ? matchplay.subtitle
       : type === 'strokeplay' && strokeplay
         ? strokeplay.subtitle
-        : null
+        : type === 'wager' && wager
+          ? [wager.result, wager.course].filter(Boolean).join(' · ') || null
+          : null
 
   return (
     <div className="flex items-start gap-3 py-3">
@@ -146,17 +185,19 @@ export function FeedItem({ type, actor, secondary_actor, description, metadata, 
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium text-foreground leading-snug">{primaryText}</p>
         {secondaryText && (
-          <p className="mt-1 text-xs leading-snug text-muted-foreground">{secondaryText}</p>
+          <p className="mt-0.5 text-xs leading-snug text-muted-foreground">{secondaryText}</p>
         )}
-        {type === 'wager' && metadata.amount != null && (
-          <p
-            className="text-xs font-bold mt-0.5"
-            style={{ color: 'oklch(0.65 0.18 50)' }}
+        {type === 'wager' && wager?.money && (
+          <span
+            className="mt-1 inline-block rounded-md px-1.5 py-0.5 text-xs font-bold"
+            style={
+              wager.halved
+                ? { backgroundColor: 'oklch(0.93 0 0)', color: 'oklch(0.50 0 0)' }
+                : { backgroundColor: 'oklch(0.65 0.18 50 / 0.15)', color: 'oklch(0.50 0.18 50)' }
+            }
           >
-            {Number.isFinite(Number(metadata.amount))
-              ? formatWalletBalance(Number(metadata.amount))
-              : '—'}
-          </p>
+            {wager.halved ? wager.money : `${wager.money} transferred`}
+          </span>
         )}
         <p className="text-xs text-muted-foreground mt-0.5">{formatRelativeTime(created_at)}</p>
       </div>

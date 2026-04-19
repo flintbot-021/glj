@@ -15,6 +15,7 @@ import {
   fetchBonusAwardsForSubSeasons,
   fetchKnockoutForSeason,
   listWagers,
+  listTeamWagers,
   listWalletTransactions,
   fetchActivityFeedPage,
   listNotifications,
@@ -41,6 +42,17 @@ import {
   insertWager,
   updateWagerToActive,
   deleteWager,
+  submitWagerOutcome,
+  confirmWagerOutcome,
+  disputeWagerOutcome,
+  reopenDisputedWager,
+  insertTeamWager,
+  deleteTeamWager,
+  acceptTeamWager,
+  submitTeamWagerOutcome,
+  confirmTeamWagerOutcome,
+  disputeTeamWagerOutcome,
+  reopenDisputedTeamWager,
   upsertTourHoleScore,
   markNotificationRead,
   closeBonusLegAndAssign,
@@ -77,8 +89,20 @@ import {
 } from '@/lib/supabase/api'
 import { getLadderSubSeasonId, getBestTwoRounds, ladderTotals } from '@/lib/bonus-ladder'
 import { profileDisplayName } from '@/lib/format'
-import type { Wager, WagerStatus, ActivityFeedItem, TourTeam, BonusLeagueEntry } from '@/lib/types'
-import type { EnrichedWager, EnrichedMatchplayResult, EnrichedFeedItem } from '@/lib/types'
+import type {
+  Wager,
+  WagerStatus,
+  TeamWager,
+  ActivityFeedItem,
+  TourTeam,
+  BonusLeagueEntry,
+} from '@/lib/types'
+import type {
+  EnrichedWager,
+  EnrichedTeamWager,
+  EnrichedMatchplayResult,
+  EnrichedFeedItem,
+} from '@/lib/types'
 
 // ─── Season context ────────────────────────────────────────────────────────────
 
@@ -210,14 +234,21 @@ export function useBonusPointAwards() {
   })
 }
 
-export function useBonusLeague() {
+/**
+ * @param viewingSubSeasonId When set, ladder columns (R1/R2/total) use this leg’s rounds.
+ *   When omitted, uses the active open ladder leg. Bonus column always sums awards for the whole season.
+ */
+export function useBonusLeague(viewingSubSeasonId?: string | null) {
   const { data: season } = useActiveSeason()
   return useQuery({
-    queryKey: ['bonus-league', season?.id],
+    queryKey: ['bonus-league', season?.id, viewingSubSeasonId ?? '__active__'],
     queryFn: async (): Promise<BonusLeagueEntry[]> => {
       const players = await listProfiles()
       const subs = await fetchSubSeasonsForSeason(season!.id)
-      const legId = getLadderSubSeasonId(subs)
+      const legId =
+        viewingSubSeasonId !== undefined && viewingSubSeasonId !== null
+          ? viewingSubSeasonId
+          : getLadderSubSeasonId(subs)
       const ssIds = subs.map((s) => s.id)
       const allRounds = await fetchStrokeplayForSubSeasons(ssIds)
       const bonusAwards = await fetchBonusAwardsForSubSeasons(ssIds)
@@ -411,6 +442,16 @@ export function useKnockoutBracket() {
 
 // ─── Wagers ───────────────────────────────────────────────────────────────────
 
+function invalidateWagerFlowQueries(qc: QueryClient) {
+  qc.invalidateQueries({ queryKey: ['wagers'] })
+  qc.invalidateQueries({ queryKey: ['team-wagers'] })
+  qc.invalidateQueries({ queryKey: ['wallet-balance'] })
+  qc.invalidateQueries({ queryKey: ['wallet-transactions'] })
+  qc.invalidateQueries({ queryKey: ['notifications'] })
+  qc.invalidateQueries({ queryKey: ['unread-count'] })
+  qc.invalidateQueries({ queryKey: ['activity-feed'] })
+}
+
 async function enrichWagers(wagers: Wager[]): Promise<EnrichedWager[]> {
   const ids = new Set<string>()
   wagers.forEach((w) => {
@@ -433,6 +474,34 @@ export function useWagers(playerId?: string, statusFilter?: WagerStatus[]) {
     queryFn: async () => {
       const rows = await listWagers(playerId, statusFilter)
       return enrichWagers(rows)
+    },
+  })
+}
+
+async function enrichTeamWagers(rows: TeamWager[]): Promise<EnrichedTeamWager[]> {
+  const ids = new Set<string>()
+  rows.forEach((w) => {
+    ids.add(w.team_a_p1)
+    ids.add(w.team_a_p2)
+    ids.add(w.team_b_p1)
+    ids.add(w.team_b_p2)
+  })
+  const map = await fetchProfileMap([...ids])
+  return rows.map((w) => ({
+    ...w,
+    team_a_p1_profile: map.get(w.team_a_p1)!,
+    team_a_p2_profile: map.get(w.team_a_p2)!,
+    team_b_p1_profile: map.get(w.team_b_p1)!,
+    team_b_p2_profile: map.get(w.team_b_p2)!,
+  }))
+}
+
+export function useTeamWagers(playerId?: string, statusFilter?: WagerStatus[]) {
+  return useQuery({
+    queryKey: ['team-wagers', playerId, statusFilter],
+    queryFn: async () => {
+      const rows = await listTeamWagers(playerId, statusFilter)
+      return enrichTeamWagers(rows)
     },
   })
 }
@@ -460,7 +529,7 @@ export function useCreateWager() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: insertWager,
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['wagers'] }),
+    onSuccess: () => invalidateWagerFlowQueries(qc),
   })
 }
 
@@ -468,7 +537,7 @@ export function useAcceptWager() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: updateWagerToActive,
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['wagers'] }),
+    onSuccess: () => invalidateWagerFlowQueries(qc),
   })
 }
 
@@ -476,7 +545,95 @@ export function useDeclineWager() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: deleteWager,
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['wagers'] }),
+    onSuccess: () => invalidateWagerFlowQueries(qc),
+  })
+}
+
+export function useSubmitWagerOutcome() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: submitWagerOutcome,
+    onSuccess: () => invalidateWagerFlowQueries(qc),
+  })
+}
+
+export function useConfirmWagerOutcome() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: confirmWagerOutcome,
+    onSuccess: () => invalidateWagerFlowQueries(qc),
+  })
+}
+
+export function useDisputeWagerOutcome() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: disputeWagerOutcome,
+    onSuccess: () => invalidateWagerFlowQueries(qc),
+  })
+}
+
+export function useReopenDisputedWager() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: reopenDisputedWager,
+    onSuccess: () => invalidateWagerFlowQueries(qc),
+  })
+}
+
+export function useCreateTeamWager() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: insertTeamWager,
+    onSuccess: () => invalidateWagerFlowQueries(qc),
+  })
+}
+
+export function useAcceptTeamWager() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: acceptTeamWager,
+    onSuccess: () => invalidateWagerFlowQueries(qc),
+  })
+}
+
+export function useDeclineTeamWager() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: deleteTeamWager,
+    onSuccess: () => invalidateWagerFlowQueries(qc),
+  })
+}
+
+export function useSubmitTeamWagerOutcome() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: submitTeamWagerOutcome,
+    onSuccess: () => invalidateWagerFlowQueries(qc),
+  })
+}
+
+export function useConfirmTeamWagerOutcome() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: confirmTeamWagerOutcome,
+    onSuccess: () => invalidateWagerFlowQueries(qc),
+  })
+}
+
+export function useDisputeTeamWagerOutcome() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: disputeTeamWagerOutcome,
+    onSuccess: () => invalidateWagerFlowQueries(qc),
+  })
+}
+
+export function useReopenDisputedTeamWager() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: reopenDisputedTeamWager,
+    onSuccess: () => invalidateWagerFlowQueries(qc),
   })
 }
 

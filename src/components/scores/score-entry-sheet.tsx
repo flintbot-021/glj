@@ -3,7 +3,8 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { useUIStore } from '@/stores/ui-store'
 import { MatchplayForm } from './matchplay-form'
 import { StrokeplayForm } from './strokeplay-form'
-import { WagerMatchForm } from './wager-match-form'
+import { WagerEntryFlow } from './wager-entry-flow'
+import { OpenWagersSection } from './open-wagers-section'
 import { Swords, Flag, DollarSign } from 'lucide-react'
 
 type ScoreType = null | 'matchplay' | 'strokeplay' | 'wager'
@@ -25,40 +26,45 @@ export function ScoreEntrySheet() {
         className="gap-2 rounded-t-2xl px-5 pb-8 shadow-none max-h-[90dvh] overflow-y-auto"
       >
         {scoreType === null ? (
-          <>
-            <SheetHeader className="mb-0 px-0 pt-3 pb-1">
-              <SheetTitle className="text-lg font-bold text-center">Enter Score</SheetTitle>
-            </SheetHeader>
-            <div className="space-y-3">
-              <ScoreTypeCard
-                icon={<Swords className="h-6 w-6" />}
-                title="Matchplay"
-                description="Record an official group fixture result"
-                color="oklch(0.29 0.072 160)"
-                onClick={() => setScoreType('matchplay')}
-              />
-              <ScoreTypeCard
-                icon={<Flag className="h-6 w-6" />}
-                title="Strokeplay Round"
-                description="Submit a round to the bonus league"
-                color="oklch(0.42 0.15 260)"
-                onClick={() => setScoreType('strokeplay')}
-              />
-              <ScoreTypeCard
-                icon={<DollarSign className="h-6 w-6" />}
-                title="Wager Match"
-                description="Challenge a friend to a wager"
-                color="oklch(0.65 0.18 50)"
-                onClick={() => setScoreType('wager')}
-              />
-            </div>
-          </>
+          <OpenWagersSection onNavigateAway={handleClose}>
+            {(openWagersList) => (
+              <>
+                <SheetHeader className="mb-0 px-0 pt-3 pb-1">
+                  <SheetTitle className="text-lg font-bold text-center">Enter Score</SheetTitle>
+                </SheetHeader>
+                <div className="space-y-3">
+                  <ScoreTypeCard
+                    icon={<Swords className="h-6 w-6" />}
+                    title="Matchplay"
+                    description="Record an official group fixture result"
+                    color="oklch(0.29 0.072 160)"
+                    onClick={() => setScoreType('matchplay')}
+                  />
+                  <ScoreTypeCard
+                    icon={<Flag className="h-6 w-6" />}
+                    title="Strokeplay Round"
+                    description="Submit a round to the bonus league"
+                    color="oklch(0.42 0.15 260)"
+                    onClick={() => setScoreType('strokeplay')}
+                  />
+                  <ScoreTypeCard
+                    icon={<DollarSign className="h-6 w-6" />}
+                    title="Wager Match"
+                    description="Open wagers, new challenges, and 2v2"
+                    color="oklch(0.65 0.18 50)"
+                    onClick={() => setScoreType('wager')}
+                  />
+                  {openWagersList}
+                </div>
+              </>
+            )}
+          </OpenWagersSection>
         ) : scoreType === 'matchplay' ? (
           <MatchplayForm onClose={handleClose} onBack={() => setScoreType(null)} />
         ) : scoreType === 'strokeplay' ? (
           <StrokeplayForm onClose={handleClose} onBack={() => setScoreType(null)} />
         ) : (
-          <WagerMatchForm onClose={handleClose} onBack={() => setScoreType(null)} />
+          <WagerEntryFlow onClose={handleClose} onBack={() => setScoreType(null)} />
         )}
       </SheetContent>
     </Sheet>
