@@ -62,7 +62,7 @@ export function AdminPage() {
           <div className="flex-1 min-w-0">
             <p className="font-bold text-base">Tour</p>
             <p className="text-sm text-muted-foreground leading-snug mt-0.5">
-              Adare Manor tour admin (coming next)
+              Courses, tour days, matches, day handicaps, live scoring setup
             </p>
           </div>
           <ChevronRight className="h-5 w-5 text-muted-foreground shrink-0" />

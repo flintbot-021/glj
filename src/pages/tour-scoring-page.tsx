@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router'
-import { useTourDayMatches, useTourHoles, useTourHoleScores, useSaveTourHoleScore } from '@/hooks/use-data'
+import { useTourDayMatches, useTourHolesForCourse, useTourHoleScores, useSaveTourHoleScore } from '@/hooks/use-data'
 import { useTourDays } from '@/hooks/use-data'
 import { Button } from '@/components/ui/button'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
@@ -13,7 +13,6 @@ export function TourScoringPage() {
   const navigate = useNavigate()
   const [currentHole, setCurrentHole] = useState(1)
 
-  const { data: holes = [] } = useTourHoles()
   const { data: holeScores = [] } = useTourHoleScores(matchId ?? '')
   const saveScore = useSaveTourHoleScore()
   const { data: tourDays = [] } = useTourDays()
@@ -24,8 +23,12 @@ export function TourScoringPage() {
 
   const { data: d1Matches = [] } = useTourDayMatches(dayMatches[0] ?? '')
   const { data: d2Matches = [] } = useTourDayMatches(dayMatches[1] ?? '')
-  const allMatches = [...d1Matches, ...d2Matches]
+  const { data: d3Matches = [] } = useTourDayMatches(dayMatches[2] ?? '')
+  const allMatches = [...d1Matches, ...d2Matches, ...d3Matches]
   const match = allMatches.find((m) => m.id === matchId)
+
+  const courseId = match?.day.course_id
+  const { data: holes = [] } = useTourHolesForCourse(courseId)
 
   const hole = holes.find((h) => h.hole_number === currentHole)
 
@@ -47,7 +50,7 @@ export function TourScoringPage() {
     const savePromises = allPlayers.map((p) => {
       const gross = scores[`${p.id}-${currentHole}`] ?? getExistingScore(p.id, currentHole)
       if (!gross) return null
-      const { net, stableford } = computeTourHoleScore(gross, hole, p.locked_handicap)
+      const { net, stableford } = computeTourHoleScore(gross, hole, p.course_handicap_day)
       return saveScore.mutateAsync({
         match_id: matchId!,
         tour_player_id: p.id,
@@ -130,7 +133,7 @@ export function TourScoringPage() {
             const teamCol = teamColor(player.team)
             const currentScore = scores[`${player.id}-${currentHole}`] ?? getExistingScore(player.id, currentHole)
             const previewScore = currentScore && hole
-              ? computeTourHoleScore(currentScore, hole, player.locked_handicap)
+              ? computeTourHoleScore(currentScore, hole, player.course_handicap_day)
               : null
 
             return (
@@ -144,7 +147,7 @@ export function TourScoringPage() {
                       {player.team}
                     </span>
                     <span className="font-bold text-sm">{profileDisplayName(player.profile)}</span>
-                    <span className="text-xs text-muted-foreground">HCP {player.locked_handicap}</span>
+                    <span className="text-xs text-muted-foreground">CH {player.course_handicap_day}</span>
                   </div>
                   {previewScore && (
                     <div className="text-right">

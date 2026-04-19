@@ -20,10 +20,13 @@ export function ScoreEntrySheet() {
 
   return (
     <Sheet open={open} onOpenChange={(v) => !v && handleClose()}>
-      <SheetContent side="bottom" className="rounded-t-2xl pb-8 max-h-[90dvh] overflow-y-auto">
+      <SheetContent
+        side="bottom"
+        className="gap-2 rounded-t-2xl px-5 pb-8 shadow-none max-h-[90dvh] overflow-y-auto"
+      >
         {scoreType === null ? (
           <>
-            <SheetHeader className="mb-6">
+            <SheetHeader className="mb-0 px-0 pt-3 pb-1">
               <SheetTitle className="text-lg font-bold text-center">Enter Score</SheetTitle>
             </SheetHeader>
             <div className="space-y-3">
@@ -78,7 +81,7 @@ function ScoreTypeCard({
   return (
     <button
       onClick={onClick}
-      className="w-full flex items-center gap-4 p-4 rounded-xl border border-border bg-card active:scale-[0.98] transition-transform text-left hover:border-primary/30 hover:bg-primary/5"
+      className="w-full flex items-center gap-3 px-3 py-3 rounded-xl border border-border bg-card active:scale-[0.98] transition-transform text-left hover:border-primary/30 hover:bg-primary/5"
     >
       <div
         className="h-12 w-12 rounded-xl flex items-center justify-center flex-shrink-0 text-white"

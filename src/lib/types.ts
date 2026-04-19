@@ -251,6 +251,8 @@ export interface TourHole {
   hole_number: number
   par: number
   stroke_index: number
+  /** Optional yardage shown in admin / yardage book */
+  yardage?: number | null
   created_at: string
 }
 
@@ -314,6 +316,15 @@ export interface TourChumpsPick {
   captain_id: string
   captain_day: 1 | 2 | 3
   locked_at?: string
+  created_at: string
+}
+
+/** Course / playing handicap for one player on one tour day (see `tour_players.locked_handicap` for tour-wide default). */
+export interface TourPlayerDayHandicap {
+  id: string
+  tour_day_id: string
+  tour_player_id: string
+  course_handicap: number
   created_at: string
 }
 
