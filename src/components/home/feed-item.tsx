@@ -69,6 +69,11 @@ function matchplayFeedLines(
   return { title, subtitle }
 }
 
+function formatStrokeplayHcp(n: number): string {
+  const rounded = Math.round(n * 10) / 10
+  return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1)
+}
+
 function strokeplayFeedLines(
   actor: Profile,
   metadata: Record<string, unknown>,
@@ -78,8 +83,27 @@ function strokeplayFeedLines(
   const netRaw = metadata.net_score
   const net =
     netRaw != null && Number.isFinite(Number(netRaw)) ? Number(netRaw) : null
+  const grossRaw = metadata.gross_score
+  const gross =
+    grossRaw != null && Number.isFinite(Number(grossRaw)) ? Number(grossRaw) : null
+  const chRaw = metadata.course_handicap
+  const courseHcp =
+    chRaw != null && Number.isFinite(Number(chRaw)) ? Number(chRaw) : null
+  const hcpLabel = courseHcp != null ? formatStrokeplayHcp(courseHcp) : null
+
   const course = metadata.course != null ? String(metadata.course).trim() : ''
-  const title = net != null ? `${name} · Net ${net}` : name
+
+  let title = name
+  if (gross != null && hcpLabel != null && net != null) {
+    title = `${name} · ${gross} (${hcpLabel}) · Net ${net}`
+  } else if (gross != null && net != null) {
+    title = `${name} · ${gross} gross · Net ${net}`
+  } else if (gross != null && hcpLabel != null) {
+    title = `${name} · ${gross} (${hcpLabel})`
+  } else if (net != null) {
+    title = `${name} · Net ${net}`
+  }
+
   const subtitle = course || (net == null ? fallbackDescription : null)
   return { title, subtitle }
 }

@@ -1122,6 +1122,7 @@ export function useSubmitStrokeplay() {
       played_at: string
       course_handicap: number
       gross_score: number
+      present_player_ids: string[]
     }) => {
       const season = await fetchActiveSeason()
       if (!season) throw new Error('No active season')
@@ -1137,8 +1138,13 @@ export function useSubmitStrokeplay() {
           season_id: season.id,
           type: 'strokeplay',
           actor_id: data.player_id,
-          description: `${profileDisplayName(self)} shot a net ${net_score} at ${data.course_name}`,
-          metadata: { net_score, course: data.course_name },
+          description: `${profileDisplayName(self)} shot ${data.gross_score} (hcp ${data.course_handicap}) · net ${net_score} at ${data.course_name}`,
+          metadata: {
+            net_score,
+            gross_score: data.gross_score,
+            course_handicap: data.course_handicap,
+            course: data.course_name,
+          },
         })
       }
 

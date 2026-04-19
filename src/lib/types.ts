@@ -101,6 +101,8 @@ export interface StrokeplayRound {
   course_handicap: number
   gross_score: number
   net_score: number
+  /** Players present at this round (includes scorer; min length 1). */
+  present_player_ids: string[]
   counts_for_ranking: boolean
   created_at: string
 }

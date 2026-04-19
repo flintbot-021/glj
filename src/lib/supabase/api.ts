@@ -473,6 +473,7 @@ export async function insertStrokeplay(data: {
   course_handicap: number
   gross_score: number
   net_score: number
+  present_player_ids: string[]
 }) {
   const res = await supabase
     .from('strokeplay_rounds')
@@ -484,6 +485,7 @@ export async function insertStrokeplay(data: {
       course_handicap: data.course_handicap,
       gross_score: data.gross_score,
       net_score: data.net_score,
+      present_player_ids: data.present_player_ids,
       counts_for_ranking: true,
     })
     .select('*')

@@ -114,6 +114,10 @@ export function mapSubSeason(r: Record<string, unknown>): SubSeason {
 }
 
 export function mapStrokeplayRound(r: Record<string, unknown>): StrokeplayRound {
+  const present = r.present_player_ids
+  const present_player_ids = Array.isArray(present)
+    ? present.map((id) => String(id))
+    : []
   return {
     id: String(r.id),
     player_id: String(r.player_id),
@@ -123,6 +127,7 @@ export function mapStrokeplayRound(r: Record<string, unknown>): StrokeplayRound 
     course_handicap: num(r.course_handicap),
     gross_score: num(r.gross_score),
     net_score: num(r.net_score),
+    present_player_ids,
     counts_for_ranking: Boolean(r.counts_for_ranking),
     created_at: String(r.created_at),
   }
