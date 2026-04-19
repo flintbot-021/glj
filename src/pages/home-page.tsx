@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Bell } from 'lucide-react'
+import { Bell, CreditCard } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { PlayerAvatar } from '@/components/ui/player-avatar'
 import { GroupStandings } from '@/components/home/group-standings'
 import { BonusLeague } from '@/components/home/bonus-league'
 import { ActivityFeed } from '@/components/home/activity-feed'
@@ -9,6 +10,7 @@ import { useAuthStore } from '@/stores/auth-store'
 import { useUIStore } from '@/stores/ui-store'
 import { useUnreadCount } from '@/hooks/use-data'
 import { formatWalletBalance } from '@/lib/format'
+import { profileDisplayName } from '@/lib/format'
 import { cn } from '@/lib/utils'
 
 type Tab = 'groups' | 'bonus'
@@ -112,41 +114,65 @@ export function HomePage() {
 
       {/* ── STICKY: compact bar + tabs ──────────────────────────────────── */}
       <div
-        className="sticky top-0 z-30"
+        className="sticky -top-px pt-px z-30 rounded-b-3xl overflow-hidden"
         style={{ backgroundColor: GREEN }}
       >
-        {/* Compact collapsed header — slides in once scrolled past hero */}
+        {/* Expanded collapsed header — slides in once scrolled past hero */}
         <div
           className={cn(
-            'flex items-center justify-between px-4 overflow-hidden transition-all duration-300 ease-out',
-            scrolled ? 'max-h-12 opacity-100 py-1' : 'max-h-0 opacity-0 py-0',
+            'overflow-hidden transition-all duration-300 ease-out',
+            scrolled ? 'max-h-28 opacity-100' : 'max-h-0 opacity-0',
           )}
-          style={{ backgroundColor: GREEN }}
         >
-          <span
-            className="rtd-display text-[26px] leading-none tracking-[0.06em]"
-            style={{ color: GOLD }}
-          >
-            ROAD TO DIAS
-          </span>
-
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 px-5 pt-5 pb-3">
+            {/* Avatar */}
             {profile && (
-              <span className="num text-sm font-semibold" style={{ color: GOLD }}>
-                {formatWalletBalance(profile.wallet_balance)}
-              </span>
+              <PlayerAvatar
+                player={profile}
+                size="md"
+                className="ring-2 flex-shrink-0"
+                style={{ '--tw-ring-color': GOLD } as React.CSSProperties}
+              />
             )}
+
+            {/* Greeting */}
+            <div className="flex-1 min-w-0">
+              <p
+                className="rtd-display text-[17px] leading-none tracking-[0.18em]"
+                style={{ color: GOLD }}
+              >
+                Road to Dias
+              </p>
+              <p className="text-[13px] font-medium text-white/70 mt-0.5">
+                Welcome, {profile ? profileDisplayName(profile).split(' ')[0] : ''}
+              </p>
+            </div>
+
+            {/* Wallet pill */}
+            {profile && (
+              <div
+                className="flex items-center gap-1.5 rounded-full px-3 py-2 flex-shrink-0"
+                style={{ backgroundColor: GREEN_DARK }}
+              >
+                <CreditCard className="h-3.5 w-3.5 text-white/50" />
+                <span className="num text-[13px] font-semibold text-white">
+                  {formatWalletBalance(profile.wallet_balance)}
+                </span>
+              </div>
+            )}
+
+            {/* Bell */}
             <Button
               variant="ghost"
               size="icon"
-              className="relative h-8 w-8 text-white hover:bg-white/10"
+              className="relative h-9 w-9 text-white hover:bg-white/10 flex-shrink-0"
               onClick={openNotifications}
             >
-              <Bell className="h-4 w-4" />
+              <Bell className="h-5 w-5" />
               {unreadCount > 0 && (
                 <span
-                  className="absolute -top-0.5 -right-0.5 h-3.5 w-3.5 rounded-full flex items-center justify-center text-[9px] font-bold"
-                  style={{ backgroundColor: GOLD, color: GOLD_FG }}
+                  className="absolute -top-0.5 -right-0.5 h-4 w-4 rounded-full flex items-center justify-center text-[9px] font-bold"
+                  style={{ backgroundColor: '#e53e3e', color: 'white' }}
                 >
                   {unreadCount > 9 ? '9+' : unreadCount}
                 </span>
@@ -156,7 +182,7 @@ export function HomePage() {
         </div>
 
         {/* Tab bar — always visible in sticky */}
-        <div className="flex gap-1 px-3 pt-2 pb-2">
+        <div className="flex gap-2 px-4 pt-2 pb-3">
           {(['groups', 'bonus'] as const).map((t) => {
             const active = tab === t
             return (
@@ -164,14 +190,10 @@ export function HomePage() {
                 key={t}
                 onClick={() => setTab(t)}
                 className={cn(
-                  'flex-1 rounded-lg py-2.5 text-[13px] font-bold uppercase tracking-widest transition-all duration-200',
+                  'flex-1 rounded-xl py-3 text-[13px] font-bold uppercase tracking-widest transition-all duration-200',
                   active ? 'shadow-sm' : 'text-white/45 hover:text-white/70',
                 )}
-                style={
-                  active
-                    ? { backgroundColor: GOLD, color: GOLD_FG }
-                    : undefined
-                }
+                style={active ? { backgroundColor: GOLD, color: GOLD_FG } : undefined}
               >
                 {t === 'groups' ? 'Groups' : 'Bonus'}
               </button>
