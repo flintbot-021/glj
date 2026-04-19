@@ -13,7 +13,7 @@ import { cn } from '@/lib/utils'
 
 type Choice = 'a' | 'b' | 'halved'
 
-const GREEN = 'oklch(0.29 0.072 160)'
+const GREEN = 'oklch(0.22 0.068 157)'
 
 interface Props {
   wager: EnrichedTeamWager | null

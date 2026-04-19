@@ -49,7 +49,7 @@ export function ProfilePage() {
       <div className="px-4 mb-5">
         <div
           className="rounded-2xl p-5"
-          style={{ backgroundColor: 'oklch(0.29 0.072 160)' }}
+          style={{ backgroundColor: 'oklch(0.22 0.068 157)' }}
         >
           <div className="flex items-center gap-4 mb-4">
             <PlayerAvatar player={profile} size="xl" />
@@ -67,19 +67,19 @@ export function ProfilePage() {
           {/* Stats row */}
           {groupStanding && (
             <div className="grid grid-cols-3 gap-2">
-              <div className="text-center p-2 rounded-xl" style={{ backgroundColor: 'oklch(0.23 0.06 160)' }}>
-                <p className="text-xl font-black" style={{ color: 'oklch(0.91 0.19 106)' }}>
+              <div className="text-center p-2 rounded-xl" style={{ backgroundColor: 'oklch(0.17 0.055 157)' }}>
+                <p className="text-xl font-black" style={{ color: 'oklch(0.80 0.14 72)' }}>
                   {formatPoints(groupStanding.total_points)}
                 </p>
                 <p className="text-[10px] text-white/50 uppercase tracking-wide mt-0.5">Points</p>
               </div>
-              <div className="text-center p-2 rounded-xl" style={{ backgroundColor: 'oklch(0.23 0.06 160)' }}>
+              <div className="text-center p-2 rounded-xl" style={{ backgroundColor: 'oklch(0.17 0.055 157)' }}>
                 <p className="text-xl font-black text-white">
                   {groupStanding.wins}-{groupStanding.losses}-{groupStanding.draws}
                 </p>
                 <p className="text-[10px] text-white/50 uppercase tracking-wide mt-0.5">W-L-D</p>
               </div>
-              <div className="text-center p-2 rounded-xl" style={{ backgroundColor: 'oklch(0.23 0.06 160)' }}>
+              <div className="text-center p-2 rounded-xl" style={{ backgroundColor: 'oklch(0.17 0.055 157)' }}>
                 <p className="text-xl font-black text-white">#{groupStanding.position}</p>
                 <p className="text-[10px] text-white/50 uppercase tracking-wide mt-0.5">{groupStanding.group_name}</p>
               </div>

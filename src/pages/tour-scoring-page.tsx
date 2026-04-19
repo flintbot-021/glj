@@ -77,7 +77,7 @@ export function TourScoringPage() {
     team === '93s' ? 'oklch(0.42 0.15 260)' : 'oklch(0.50 0.21 26)'
 
   return (
-    <div className="min-h-dvh flex flex-col" style={{ backgroundColor: 'oklch(0.29 0.072 160)' }}>
+    <div className="min-h-dvh flex flex-col" style={{ backgroundColor: 'oklch(0.22 0.068 157)' }}>
       {/* Header */}
       <div className="flex items-center justify-between px-4 pt-4 pb-3">
         <Button
@@ -118,7 +118,7 @@ export function TourScoringPage() {
                 height: 6,
                 width: currentHole === i + 1 ? 16 : 6,
                 backgroundColor: currentHole === i + 1
-                  ? 'oklch(0.91 0.19 106)'
+                  ? 'oklch(0.80 0.14 72)'
                   : hasScores ? 'oklch(0.50 0.06 160)' : 'oklch(0.40 0.05 160)',
               }}
             />
@@ -208,7 +208,7 @@ export function TourScoringPage() {
           )}
           <Button
             className="flex-1 h-14 text-base font-bold gap-2"
-            style={{ backgroundColor: 'oklch(0.91 0.19 106)', color: 'oklch(0.20 0.07 150)' }}
+            style={{ backgroundColor: 'oklch(0.80 0.14 72)', color: 'oklch(0.18 0.06 60)' }}
             onClick={handleSaveHole}
             disabled={saveScore.isPending}
           >

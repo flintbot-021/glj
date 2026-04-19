@@ -54,7 +54,7 @@ const STATUS_COLOR: Record<WagerStatus, string> = {
   disputed: 'oklch(0.55 0.22 25)',
 }
 
-const GREEN = 'oklch(0.29 0.072 160)'
+const GREEN = 'oklch(0.22 0.068 157)'
 const AMBER = 'oklch(0.65 0.18 50)'
 
 function StatusPill({ status }: { status: WagerStatus }) {
@@ -137,7 +137,7 @@ export function WagersPage() {
         <Button
           size="sm"
           className="gap-1.5 rounded-full"
-          style={{ backgroundColor: 'oklch(0.91 0.19 106)', color: 'oklch(0.20 0.07 150)' }}
+          style={{ backgroundColor: 'oklch(0.80 0.14 72)', color: 'oklch(0.18 0.06 60)' }}
           onClick={openScoreSheet}
         >
           <Plus className="h-3.5 w-3.5" />
@@ -184,7 +184,7 @@ export function WagersPage() {
             </p>
             <Button
               className="mt-4"
-              style={{ backgroundColor: 'oklch(0.91 0.19 106)', color: 'oklch(0.20 0.07 150)' }}
+              style={{ backgroundColor: 'oklch(0.80 0.14 72)', color: 'oklch(0.18 0.06 60)' }}
               onClick={openScoreSheet}
             >
               New Wager

@@ -119,7 +119,7 @@ export function TourDayPage() {
                 {match.status === 'in_progress' && (
                   <Button
                     className="w-full mt-3 gap-2"
-                    style={{ backgroundColor: 'oklch(0.91 0.19 106)', color: 'oklch(0.20 0.07 150)' }}
+                    style={{ backgroundColor: 'oklch(0.80 0.14 72)', color: 'oklch(0.18 0.06 60)' }}
                     onClick={() => navigate(`/tour/scoring/${match.id}`)}
                   >
                     Live Scoring

@@ -59,7 +59,7 @@ export function AdminTourPage() {
           icon={<MapPin className="h-5 w-5" />}
           label="Courses"
           desc="Course list and yardage / par per hole"
-          color="oklch(0.29 0.072 160)"
+          color="oklch(0.22 0.068 157)"
           onClick={() => navigate('/admin/tour/courses')}
         />
         <AdminTourLink
@@ -87,7 +87,7 @@ export function AdminTourPage() {
           icon={<Trophy className="h-5 w-5" />}
           label="Matches"
           desc="Lineups, status, team points"
-          color="oklch(0.91 0.19 106)"
+          color="oklch(0.80 0.14 72)"
           onClick={() => navigate('/admin/tour/matches')}
         />
       </div>

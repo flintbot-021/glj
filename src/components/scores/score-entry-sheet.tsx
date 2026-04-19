@@ -37,7 +37,7 @@ export function ScoreEntrySheet() {
                     icon={<Swords className="h-6 w-6" />}
                     title="Matchplay"
                     description="Record an official group fixture result"
-                    color="oklch(0.29 0.072 160)"
+                    color="oklch(0.22 0.068 157)"
                     onClick={() => setScoreType('matchplay')}
                   />
                   <ScoreTypeCard

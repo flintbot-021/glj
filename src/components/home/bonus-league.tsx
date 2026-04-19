@@ -106,7 +106,7 @@ function BonusStandingsTable({ entries }: { entries: BonusLeagueEntry[] }) {
               </span>
               <span
                 className="w-10 text-right text-sm font-black"
-                style={{ color: 'oklch(0.91 0.19 106)' }}
+                style={{ color: 'oklch(0.80 0.14 72)' }}
               >
                 {fmtScore(entry.total_net)}
               </span>
@@ -114,7 +114,7 @@ function BonusStandingsTable({ entries }: { entries: BonusLeagueEntry[] }) {
                 className="w-10 text-right text-sm font-black"
                 style={{
                   color:
-                    entry.bonus_points > 0 ? 'oklch(0.91 0.19 106)' : 'var(--muted-foreground)',
+                    entry.bonus_points > 0 ? 'oklch(0.80 0.14 72)' : 'var(--muted-foreground)',
                 }}
               >
                 {entry.bonus_points > 0 ? `+${formatPoints(entry.bonus_points)}` : '—'}
@@ -182,7 +182,7 @@ function BonusStandingsCards({ entries }: { entries: BonusLeagueEntry[] }) {
                 className="text-base font-black tabular-nums"
                 style={{
                   color:
-                    entry.bonus_points > 0 ? 'oklch(0.91 0.19 106)' : 'var(--muted-foreground)',
+                    entry.bonus_points > 0 ? 'oklch(0.80 0.14 72)' : 'var(--muted-foreground)',
                 }}
               >
                 {entry.bonus_points > 0 ? `+${formatPoints(entry.bonus_points)}` : '—'}
@@ -421,8 +421,8 @@ export function BonusLeague() {
           <div
             className="rounded-t-xl border-b"
             style={{
-              backgroundColor: 'oklch(0.29 0.072 160)',
-              borderBottomColor: 'oklch(0.36 0.06 160)',
+              backgroundColor: 'oklch(0.22 0.068 157)',
+              borderBottomColor: 'oklch(0.30 0.068 157)',
             }}
           >
             <div
@@ -441,7 +441,7 @@ export function BonusLeague() {
                       {/* Match group-standings: header row + label row, same border and type scale. */}
                       <div
                         className="flex items-center gap-2 px-4 py-3"
-                        style={{ borderBottom: '1px solid oklch(0.36 0.06 160)' }}
+                        style={{ borderBottom: '1px solid oklch(0.30 0.068 157)' }}
                       >
                         <h3 className="min-w-0 flex-1 text-sm font-bold uppercase tracking-wider text-white/80">
                           {sub.name}
@@ -457,7 +457,7 @@ export function BonusLeague() {
                             )}
                             style={
                               vis.badge === 'live'
-                                ? { backgroundColor: 'oklch(0.91 0.19 106)' }
+                                ? { backgroundColor: 'oklch(0.80 0.14 72)' }
                                 : undefined
                             }
                           >
@@ -527,7 +527,7 @@ export function BonusLeague() {
                     style={{
                       width: i === index ? 16 : 6,
                       backgroundColor:
-                        i === index ? 'oklch(0.91 0.19 106)' : 'oklch(0.70 0 0)',
+                        i === index ? 'oklch(0.80 0.14 72)' : 'oklch(0.70 0 0)',
                     }}
                   />
                 ))}

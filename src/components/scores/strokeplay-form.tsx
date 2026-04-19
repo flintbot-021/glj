@@ -140,7 +140,7 @@ export function StrokeplayForm({ onClose, onBack }: Props) {
           <h3 className="text-lg font-bold">Round submitted</h3>
           <p className="text-sm text-muted-foreground">{submittedCourse}</p>
           <div>
-            <p className="text-4xl font-black" style={{ color: 'oklch(0.29 0.072 160)' }}>
+            <p className="text-4xl font-black" style={{ color: 'oklch(0.22 0.068 157)' }}>
               Net {net}
             </p>
             <p className="mt-1 text-sm text-muted-foreground">
@@ -181,7 +181,7 @@ export function StrokeplayForm({ onClose, onBack }: Props) {
               style={{
                 backgroundColor:
                   (step === 'confirm' && i <= 1) || (step === 'details' && i === 0)
-                    ? 'oklch(0.91 0.19 106)'
+                    ? 'oklch(0.80 0.14 72)'
                     : 'oklch(0.90 0 0)',
               }}
             />
@@ -382,7 +382,7 @@ export function StrokeplayForm({ onClose, onBack }: Props) {
             onClick={() => setStep('confirm')}
             disabled={!canReview || openSubSeasons.length === 0}
             className="h-auto min-h-12 w-full rounded-xl px-3 py-3 text-center text-sm font-bold leading-snug"
-            style={{ backgroundColor: 'oklch(0.91 0.19 106)', color: 'oklch(0.20 0.07 150)' }}
+            style={{ backgroundColor: 'oklch(0.80 0.14 72)', color: 'oklch(0.18 0.06 60)' }}
           >
             Review round
           </Button>
@@ -439,7 +439,7 @@ export function StrokeplayForm({ onClose, onBack }: Props) {
             onClick={handleSubmit}
             disabled={!canReview || netScore === null || submitStrokeplay.isPending}
             className="h-auto min-h-12 w-full rounded-xl px-3 py-3 text-center text-sm font-bold leading-snug"
-            style={{ backgroundColor: 'oklch(0.91 0.19 106)', color: 'oklch(0.20 0.07 150)' }}
+            style={{ backgroundColor: 'oklch(0.80 0.14 72)', color: 'oklch(0.18 0.06 60)' }}
           >
             {submitStrokeplay.isPending ? 'Submitting…' : 'Submit round'}
           </Button>

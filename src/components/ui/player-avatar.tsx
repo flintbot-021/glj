@@ -5,7 +5,7 @@ import { getProfileAvatarSrc } from '@/lib/avatar-src'
 import { profileDisplayName } from '@/lib/format'
 
 const AVATAR_COLORS = [
-  ['oklch(0.29 0.072 160)', 'oklch(0.91 0.19 106)'], // green/lime
+  ['oklch(0.22 0.068 157)', 'oklch(0.80 0.14 72)'], // green/lime
   ['oklch(0.42 0.15 260)', 'white'], // blue
   ['oklch(0.50 0.21 26)', 'white'], // red
   ['oklch(0.55 0.12 200)', 'white'], // teal

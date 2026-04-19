@@ -231,7 +231,7 @@ function LeaderRow({ standing, rank }: { standing: GroupStanding; rank: number }
       <span className="text-xs font-bold tabular-nums w-5 text-muted-foreground">{rank}</span>
       <PlayerAvatar player={p} size="xs" />
       <span className="text-sm font-medium flex-1 truncate">{profileDisplayName(p)}</span>
-      <span className="text-sm font-semibold tabular-nums" style={{ color: 'oklch(0.29 0.072 160)' }}>
+      <span className="text-sm font-semibold tabular-nums" style={{ color: 'oklch(0.22 0.068 157)' }}>
         {formatPoints(standing.total_points)}
         <span className="text-[10px] font-normal text-muted-foreground ml-0.5">pts</span>
       </span>

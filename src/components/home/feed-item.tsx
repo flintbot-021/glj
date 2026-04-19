@@ -23,10 +23,10 @@ const FEED_ICONS: Record<FeedItemType, React.ReactNode> = {
 }
 
 const FEED_COLORS: Record<FeedItemType, string> = {
-  matchplay: 'oklch(0.29 0.072 160)',
+  matchplay: 'oklch(0.22 0.068 157)',
   strokeplay: 'oklch(0.42 0.15 260)',
   wager: 'oklch(0.65 0.18 50)',
-  bonus_points: 'oklch(0.91 0.19 106)',
+  bonus_points: 'oklch(0.80 0.14 72)',
   knockout: 'oklch(0.60 0.18 330)',
   tour_score: 'oklch(0.42 0.15 260)',
 }

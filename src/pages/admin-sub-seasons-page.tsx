@@ -60,7 +60,7 @@ export function AdminSubSeasonsPage() {
                         <span className="text-xs text-muted-foreground w-4">#{award.position}</span>
                         <PlayerAvatar player={entry.player} size="xs" />
                         <span className="text-sm flex-1">{profileDisplayName(entry.player)}</span>
-                        <span className="text-sm font-bold" style={{ color: 'oklch(0.91 0.19 106)' }}>
+                        <span className="text-sm font-bold" style={{ color: 'oklch(0.80 0.14 72)' }}>
                           +{formatPoints(award.points_awarded)}
                         </span>
                       </div>

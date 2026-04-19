@@ -24,7 +24,7 @@ export function TourPage() {
       {/* Tour header */}
       <div
         className="mx-4 mb-5 rounded-2xl p-5 overflow-hidden relative"
-        style={{ backgroundColor: 'oklch(0.29 0.072 160)' }}
+        style={{ backgroundColor: 'oklch(0.22 0.068 157)' }}
       >
         <div className="flex items-start justify-between mb-4">
           <div>
@@ -73,7 +73,7 @@ export function TourPage() {
                 className="h-full rounded-full transition-all"
                 style={{
                   width: `${((leaderboard['93s'].total + leaderboard['91s'].total) / (leaderboard.target * 2)) * 100}%`,
-                  backgroundColor: 'oklch(0.91 0.19 106)',
+                  backgroundColor: 'oklch(0.80 0.14 72)',
                 }}
               />
             </div>

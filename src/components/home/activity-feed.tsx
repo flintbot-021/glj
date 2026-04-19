@@ -28,20 +28,22 @@ export function ActivityFeed() {
   const displayItems = allItems?.items ?? []
 
   return (
-    <div className="px-4">
+    <div className="px-4 pb-4">
       <h2 className="text-sm font-bold uppercase tracking-wider text-muted-foreground mb-3">
         Activity
       </h2>
 
       {isLoading && displayItems.length === 0 ? (
-        <div className="space-y-4">
-          {[0, 1, 2, 3].map((i) => (
-            <div key={i} className="flex gap-3">
-              <Skeleton className="h-8 w-8 rounded-full flex-shrink-0" />
-              <div className="flex-1 space-y-1.5">
-                <Skeleton className="h-4 w-full" />
-                <Skeleton className="h-3 w-24" />
+        <div className="divide-y divide-border animate-pulse">
+          {[0, 1, 2, 3, 4].map((i) => (
+            <div key={i} className="flex items-start gap-3 py-3">
+              <Skeleton className="h-9 w-9 rounded-full flex-shrink-0" />
+              <div className="flex-1 space-y-2 pt-0.5">
+                <Skeleton className="h-3.5 rounded-full" style={{ width: `${65 + (i % 3) * 12}%` }} />
+                <Skeleton className="h-3 w-28 rounded-full" />
+                <Skeleton className="h-3 w-16 rounded-full" />
               </div>
+              <Skeleton className="h-6 w-6 rounded-full flex-shrink-0" />
             </div>
           ))}
         </div>

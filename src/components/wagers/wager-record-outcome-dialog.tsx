@@ -185,7 +185,7 @@ export function WagerRecordOutcomeDialog({ wager, profileId, open, onOpenChange 
           <Button
             type="button"
             className="flex-1 font-bold"
-            style={{ backgroundColor: 'oklch(0.29 0.072 160)' }}
+            style={{ backgroundColor: 'oklch(0.22 0.068 157)' }}
             disabled={submit.isPending}
             onClick={handleSubmit}
           >

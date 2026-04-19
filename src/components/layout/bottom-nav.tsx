@@ -21,8 +21,8 @@ export function BottomNav() {
     <nav
       className="fixed bottom-0 left-0 right-0 z-50 border-t safe-bottom"
       style={{
-        backgroundColor: 'oklch(0.29 0.072 160)',
-        borderTopColor: 'oklch(0.36 0.06 160)',
+        backgroundColor: 'oklch(0.22 0.068 157)',
+        borderTopColor: 'oklch(0.30 0.068 157)',
       }}
     >
       <div className="flex items-end justify-around px-2 pt-2 pb-1">
@@ -48,13 +48,13 @@ export function BottomNav() {
             onClick={openScoreSheet}
             className="flex h-14 w-14 -mt-5 items-center justify-center rounded-full shadow-lg transition-transform active:scale-95 focus:outline-none"
             style={{
-              backgroundColor: 'oklch(0.91 0.19 106)',
+              backgroundColor: 'oklch(0.80 0.14 72)',
               boxShadow: '0 4px 14px oklch(0.91 0.19 106 / 0.5)',
             }}
             aria-label="Enter Score"
           >
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-              <path d="M12 5v14M5 12h14" stroke="oklch(0.20 0.07 150)" strokeWidth="2.5" strokeLinecap="round" />
+              <path d="M12 5v14M5 12h14" stroke="oklch(0.18 0.06 60)" strokeWidth="2.5" strokeLinecap="round" />
             </svg>
           </button>
           <span className="mt-1 text-[10px] font-semibold text-white/50">Score</span>
@@ -116,14 +116,14 @@ function NavButton({
       )}
     >
       <span
-        style={{ color: active ? 'oklch(0.91 0.19 106)' : 'white' }}
+        style={{ color: active ? 'oklch(0.80 0.14 72)' : 'white' }}
         className="transition-colors"
       >
         {icon}
       </span>
       <span
         className="text-[10px] font-semibold"
-        style={{ color: active ? 'oklch(0.91 0.19 106)' : 'white' }}
+        style={{ color: active ? 'oklch(0.80 0.14 72)' : 'white' }}
       >
         {label}
       </span>
