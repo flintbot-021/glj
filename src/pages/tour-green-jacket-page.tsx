@@ -51,7 +51,7 @@ export function TourGreenJacketPage() {
                 idx === 0 ? 'border-2' : 'bg-card border border-border'
               )}
               style={idx === 0 ? {
-                borderColor: 'oklch(0.91 0.19 106)',
+                borderColor: 'oklch(0.80 0.14 72)',
                 backgroundColor: 'oklch(0.91 0.19 106 / 0.05)',
               } : undefined}
             >
@@ -83,7 +83,7 @@ export function TourGreenJacketPage() {
                 ))}
                 <span
                   className="text-sm font-black w-10 text-right"
-                  style={{ color: entry.total_points > 0 ? 'oklch(0.91 0.19 106)' : undefined }}
+                  style={{ color: entry.total_points > 0 ? 'oklch(0.80 0.14 72)' : undefined }}
                 >
                   {entry.total_points > 0 ? entry.total_points : '—'}
                 </span>

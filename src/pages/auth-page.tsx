@@ -35,7 +35,7 @@ export function AuthPage() {
   return (
     <div
       className="min-h-dvh flex flex-col items-center justify-center px-6"
-      style={{ backgroundColor: 'oklch(0.29 0.072 160)' }}
+      style={{ backgroundColor: 'oklch(0.22 0.068 157)' }}
     >
       <div className="w-full max-w-sm">
         <div className="text-center mb-10">
@@ -44,7 +44,7 @@ export function AuthPage() {
           </p>
           <h1
             className="text-5xl font-black tracking-tight text-white"
-            style={{ fontFamily: "'DM Serif Display', serif", color: 'oklch(0.91 0.19 106)' }}
+            style={{ fontFamily: "'DM Serif Display', serif", color: 'oklch(0.80 0.14 72)' }}
           >
             Road To Dias
           </h1>
@@ -80,7 +80,7 @@ export function AuthPage() {
           <Button
             type="submit"
             className="w-full h-12 text-base font-bold disabled:opacity-60"
-            style={{ backgroundColor: 'oklch(0.91 0.19 106)', color: 'oklch(0.20 0.07 150)' }}
+            style={{ backgroundColor: 'oklch(0.80 0.14 72)', color: 'oklch(0.18 0.06 60)' }}
             disabled={pending}
           >
             {pending ? 'Signing in…' : 'Sign in'}

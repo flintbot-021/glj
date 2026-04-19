@@ -74,7 +74,7 @@ export function TourChumpsPage() {
                   <PlayerAvatar player={entry.picker} size="sm" />
                   <span className="font-bold text-sm">{profileDisplayName(entry.picker)}</span>
                 </div>
-                <span className="text-lg font-black" style={{ color: 'oklch(0.91 0.19 106)' }}>
+                <span className="text-lg font-black" style={{ color: 'oklch(0.80 0.14 72)' }}>
                   {entry.total_points} pts
                 </span>
               </div>
@@ -95,7 +95,7 @@ export function TourChumpsPage() {
                       {isCaptain && (
                         <Star
                           className="absolute top-1 right-1 h-3 w-3"
-                          style={{ color: 'oklch(0.91 0.19 106)', fill: 'oklch(0.91 0.19 106)' }}
+                          style={{ color: 'oklch(0.80 0.14 72)', fill: 'oklch(0.80 0.14 72)' }}
                         />
                       )}
                       <PlayerAvatar player={pick.profile} size="xs" />
@@ -111,7 +111,7 @@ export function TourChumpsPage() {
                       {isCaptain && (
                         <span
                           className="text-[8px] font-bold"
-                          style={{ color: 'oklch(0.91 0.19 106)' }}
+                          style={{ color: 'oklch(0.80 0.14 72)' }}
                         >
                           D{entry.pick.captain_day}
                         </span>

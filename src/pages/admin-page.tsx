@@ -35,7 +35,7 @@ export function AdminPage() {
         >
           <div
             className="h-14 w-14 rounded-2xl flex items-center justify-center flex-shrink-0 text-white"
-            style={{ backgroundColor: 'oklch(0.29 0.072 160)' }}
+            style={{ backgroundColor: 'oklch(0.22 0.068 157)' }}
           >
             <Flag className="h-7 w-7" />
           </div>

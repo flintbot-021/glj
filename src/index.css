@@ -1,4 +1,4 @@
-@import "https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300..900;1,9..40,300..900&family=DM+Serif+Display:ital@0;1&display=swap";
+@import "https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,opsz,wght@0,9..40,300..900;1,9..40,300..900&family=IBM+Plex+Mono:wght@400;500;600&display=swap";
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
@@ -7,7 +7,8 @@
 
 @theme inline {
     --font-sans: 'DM Sans', system-ui, sans-serif;
-    --font-display: 'DM Serif Display', serif;
+    --font-display: 'Bebas Neue', system-ui, sans-serif;
+    --font-mono: 'IBM Plex Mono', 'Courier New', monospace;
 
     --color-background: var(--background);
     --color-foreground: var(--foreground);
@@ -31,8 +32,12 @@
     /* RTD custom tokens */
     --color-rtd-green: var(--rtd-green);
     --color-rtd-green-light: var(--rtd-green-light);
-    --color-rtd-lime: var(--rtd-lime);
-    --color-rtd-lime-foreground: var(--rtd-lime-foreground);
+    --color-rtd-green-dark: var(--rtd-green-dark);
+    --color-rtd-gold: var(--rtd-gold);
+    --color-rtd-gold-foreground: var(--rtd-gold-foreground);
+    /* Legacy alias so old rtd-lime-* classes still resolve */
+    --color-rtd-lime: var(--rtd-gold);
+    --color-rtd-lime-foreground: var(--rtd-gold-foreground);
     --color-team-93s: var(--team-93s);
     --color-team-91s: var(--team-91s);
 
@@ -54,42 +59,43 @@
 
 :root {
     /* Base surfaces */
-    --background: oklch(0.98 0 0);
-    --foreground: oklch(0.14 0.03 160);
+    --background: oklch(0.965 0.006 157);
+    --foreground: oklch(0.14 0.03 157);
     --card: oklch(1 0 0);
-    --card-foreground: oklch(0.14 0.03 160);
+    --card-foreground: oklch(0.14 0.03 157);
     --popover: oklch(1 0 0);
-    --popover-foreground: oklch(0.14 0.03 160);
+    --popover-foreground: oklch(0.14 0.03 157);
 
-    /* RTD Deep Forest Green as primary */
-    --primary: oklch(0.29 0.072 160);
+    /* RTD Deep Forest Green as primary — updated to richer, darker green */
+    --primary: oklch(0.22 0.068 157);
     --primary-foreground: oklch(0.97 0 0);
 
-    --secondary: oklch(0.95 0.01 160);
-    --secondary-foreground: oklch(0.29 0.072 160);
+    --secondary: oklch(0.95 0.01 157);
+    --secondary-foreground: oklch(0.22 0.068 157);
 
-    --muted: oklch(0.95 0.005 160);
-    --muted-foreground: oklch(0.50 0.02 160);
+    --muted: oklch(0.94 0.008 157);
+    --muted-foreground: oklch(0.50 0.02 157);
 
-    /* RTD Electric Lime as accent */
-    --accent: oklch(0.91 0.19 106);
-    --accent-foreground: oklch(0.20 0.07 150);
+    /* RTD Warm Gold as accent */
+    --accent: oklch(0.80 0.14 72);
+    --accent-foreground: oklch(0.18 0.06 60);
 
     --destructive: oklch(0.577 0.245 27.325);
-    --border: oklch(0.90 0.01 160);
-    --input: oklch(0.93 0.01 160);
-    --ring: oklch(0.29 0.072 160);
+    --border: oklch(0.90 0.01 157);
+    --input: oklch(0.93 0.01 157);
+    --ring: oklch(0.22 0.068 157);
 
     /* RTD custom */
-    --rtd-green: oklch(0.29 0.072 160);
-    --rtd-green-light: oklch(0.36 0.072 160);
-    --rtd-lime: oklch(0.91 0.19 106);
-    --rtd-lime-foreground: oklch(0.20 0.07 150);
+    --rtd-green: oklch(0.22 0.068 157);
+    --rtd-green-light: oklch(0.30 0.068 157);
+    --rtd-green-dark: oklch(0.17 0.055 157);
+    --rtd-gold: oklch(0.80 0.14 72);
+    --rtd-gold-foreground: oklch(0.18 0.06 60);
     --team-93s: oklch(0.42 0.15 260);
     --team-91s: oklch(0.50 0.21 26);
 
-    --chart-1: oklch(0.29 0.072 160);
-    --chart-2: oklch(0.91 0.19 106);
+    --chart-1: oklch(0.22 0.068 157);
+    --chart-2: oklch(0.80 0.14 72);
     --chart-3: oklch(0.42 0.15 260);
     --chart-4: oklch(0.50 0.21 26);
     --chart-5: oklch(0.65 0.12 200);
@@ -116,15 +122,23 @@
 /* RTD utility classes */
 @layer utilities {
     .rtd-green-surface {
-        background-color: oklch(0.29 0.072 160);
+        background-color: oklch(0.22 0.068 157);
         color: oklch(0.97 0 0);
     }
+    .rtd-gold-text {
+        color: oklch(0.80 0.14 72);
+    }
+    .rtd-gold-bg {
+        background-color: oklch(0.80 0.14 72);
+        color: oklch(0.18 0.06 60);
+    }
+    /* Legacy aliases */
     .rtd-lime-text {
-        color: oklch(0.91 0.19 106);
+        color: oklch(0.80 0.14 72);
     }
     .rtd-lime-bg {
-        background-color: oklch(0.91 0.19 106);
-        color: oklch(0.20 0.07 150);
+        background-color: oklch(0.80 0.14 72);
+        color: oklch(0.18 0.06 60);
     }
     .team-93s-bg {
         background-color: oklch(0.42 0.15 260);
@@ -135,9 +149,23 @@
     .safe-bottom {
         padding-bottom: env(safe-area-inset-bottom, 0px);
     }
-    /* At least py-3 top padding; notches add on top (don’t let env(0) wipe pt from py-3 + safe-top) */
     .safe-top {
         padding-top: max(0.75rem, env(safe-area-inset-top, 0px));
+    }
+    /* Bebas Neue display text with stamp shadow */
+    .rtd-display {
+        font-family: 'Bebas Neue', system-ui, sans-serif;
+        letter-spacing: 0.04em;
+    }
+    .rtd-stamp {
+        text-shadow:
+            0 2px 0 rgba(0, 0, 0, 0.25),
+            0 4px 16px rgba(0, 0, 0, 0.35);
+    }
+    /* Monospace for numbers */
+    .num {
+        font-family: 'IBM Plex Mono', 'Courier New', monospace;
+        font-variant-numeric: tabular-nums;
     }
 }
 

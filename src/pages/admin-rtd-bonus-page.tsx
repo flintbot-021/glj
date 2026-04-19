@@ -154,7 +154,7 @@ export function AdminRtdBonusPage() {
 
         <Button
           className="w-full"
-          style={{ backgroundColor: 'oklch(0.91 0.19 106)', color: 'oklch(0.20 0.07 150)' }}
+          style={{ backgroundColor: 'oklch(0.80 0.14 72)', color: 'oklch(0.18 0.06 60)' }}
           disabled={!selected || openSubs.length === 0 || closeLeg.isPending}
           onClick={() => setConfirmOpen(true)}
         >
@@ -192,7 +192,7 @@ export function AdminRtdBonusPage() {
                   <span className="font-bold w-8">#{a.position}</span>
                   <PlayerAvatar player={a.player} size="xs" />
                   <span className="flex-1">{profileDisplayName(a.player)}</span>
-                  <span className="font-bold tabular-nums" style={{ color: 'oklch(0.91 0.19 106)' }}>
+                  <span className="font-bold tabular-nums" style={{ color: 'oklch(0.80 0.14 72)' }}>
                     +{formatPoints(a.points_awarded)}
                   </span>
                 </li>

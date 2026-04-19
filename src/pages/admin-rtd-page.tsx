@@ -34,7 +34,7 @@ export function AdminRtdPage() {
           icon={<CalendarDays className="h-5 w-5" />}
           label="Season & bonus legs"
           desc="Main season dates, stroke-play windows, bonus point values"
-          color="oklch(0.29 0.072 160)"
+          color="oklch(0.22 0.068 157)"
           onClick={() => navigate('/admin/rtd/season')}
         />
         <AdminRtdLink
@@ -48,7 +48,7 @@ export function AdminRtdPage() {
           icon={<Star className="h-5 w-5" />}
           label="Close bonus leg & assign points"
           desc="Confirm top 3, record awards, open the next leg"
-          color="oklch(0.91 0.19 106)"
+          color="oklch(0.80 0.14 72)"
           onClick={() => navigate('/admin/rtd/bonus')}
         />
         <AdminRtdLink

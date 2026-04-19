@@ -183,7 +183,7 @@ export function MatchplayForm({ onClose, onBack }: Props) {
           className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full"
           style={{ backgroundColor: 'oklch(0.91 0.19 106 / 0.2)' }}
         >
-          <CheckCircle2 className="h-10 w-10" style={{ color: 'oklch(0.91 0.19 106)' }} />
+          <CheckCircle2 className="h-10 w-10" style={{ color: 'oklch(0.80 0.14 72)' }} />
         </div>
         <div className="space-y-3 text-center">
           <h3 className="text-lg font-bold">Result submitted</h3>
@@ -202,7 +202,7 @@ export function MatchplayForm({ onClose, onBack }: Props) {
         <Button
           onClick={onClose}
           className="mt-1 h-auto min-h-12 w-full rounded-xl px-3 py-3 text-center text-sm font-bold leading-snug text-primary-foreground shadow-none active:translate-y-0 [box-shadow:none]"
-          style={{ backgroundColor: 'oklch(0.29 0.072 160)' }}
+          style={{ backgroundColor: 'oklch(0.22 0.068 157)' }}
         >
           Done
         </Button>
@@ -228,7 +228,7 @@ export function MatchplayForm({ onClose, onBack }: Props) {
               style={{
                 backgroundColor:
                   ['opponent', 'result', 'details'].indexOf(step) >= i
-                    ? 'oklch(0.91 0.19 106)'
+                    ? 'oklch(0.80 0.14 72)'
                     : 'oklch(0.90 0 0)',
               }}
             />
@@ -353,7 +353,7 @@ export function MatchplayForm({ onClose, onBack }: Props) {
               (result !== 'drew' && !isValidFinishedMatch(holesUp, holesRemaining))
             }
             className="h-auto min-h-12 w-full rounded-xl px-3 py-3 text-center text-sm font-bold leading-snug whitespace-normal"
-            style={{ backgroundColor: 'oklch(0.29 0.072 160)' }}
+            style={{ backgroundColor: 'oklch(0.22 0.068 157)' }}
           >
             {resultStepConfirmLabel(result, holesUp, holesRemaining)}
           </Button>
@@ -421,7 +421,7 @@ export function MatchplayForm({ onClose, onBack }: Props) {
             onClick={handleSubmit}
             disabled={(!course && !courseInput) || submitMatchplay.isPending}
             className="h-auto min-h-12 w-full rounded-xl px-3 py-3 text-center text-sm font-bold leading-snug"
-            style={{ backgroundColor: 'oklch(0.91 0.19 106)', color: 'oklch(0.20 0.07 150)' }}
+            style={{ backgroundColor: 'oklch(0.80 0.14 72)', color: 'oklch(0.18 0.06 60)' }}
           >
             {submitMatchplay.isPending ? 'Submitting...' : 'Submit result'}
           </Button>

@@ -101,6 +101,8 @@ export interface StrokeplayRound {
   course_handicap: number
   gross_score: number
   net_score: number
+  /** Players present at this round (includes scorer; min length 1). */
+  present_player_ids: string[]
   counts_for_ranking: boolean
   created_at: string
 }
@@ -154,6 +156,27 @@ export interface Wager {
   result_played_at?: string
   proposer_confirmed: boolean
   opponent_confirmed: boolean
+  settled_at?: string
+  created_at: string
+}
+
+export type TeamWagerWinner = 'a' | 'b'
+
+export interface TeamWager {
+  id: string
+  created_by: string
+  team_a_p1: string
+  team_a_p2: string
+  team_b_p1: string
+  team_b_p2: string
+  amount: number
+  status: WagerStatus
+  result_winner_team?: TeamWagerWinner | null
+  result_margin?: string
+  result_course?: string
+  result_played_at?: string
+  team_a_confirmed: boolean
+  team_b_confirmed: boolean
   settled_at?: string
   created_at: string
 }
@@ -334,6 +357,13 @@ export interface EnrichedWager extends Wager {
   proposer: Profile
   opponent: Profile
   result_winner?: Profile
+}
+
+export interface EnrichedTeamWager extends TeamWager {
+  team_a_p1_profile: Profile
+  team_a_p2_profile: Profile
+  team_b_p1_profile: Profile
+  team_b_p2_profile: Profile
 }
 
 export interface EnrichedFeedItem extends ActivityFeedItem {

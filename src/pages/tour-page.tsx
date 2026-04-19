@@ -3,10 +3,13 @@ import { useTourLeaderboard, useTourDays, useTourPlayers } from '@/hooks/use-dat
 import { PlayerAvatar } from '@/components/ui/player-avatar'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
-import { ChevronRight } from 'lucide-react'
+import { ChevronRight, Flag } from 'lucide-react'
 import { profileDisplayName } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import type { Profile, TourPlayer, TourTeam } from '@/lib/types'
+
+const GREEN = 'oklch(0.22 0.068 157)'
+const GOLD  = 'oklch(0.80 0.14 72)'
 
 type TourPlayerRow = TourPlayer & { profile: Profile }
 
@@ -19,12 +22,16 @@ export function TourPage() {
   const team93sPlayers = tourPlayers?.filter((tp) => tp.team === '93s') ?? []
   const team91sPlayers = tourPlayers?.filter((tp) => tp.team === '91s') ?? []
 
+  return <TourComingSoon />
+
+  // Live tour page (re-enable when tour goes live)
+  // eslint-disable-next-line no-unreachable
   return (
     <div className="py-4">
       {/* Tour header */}
       <div
         className="mx-4 mb-5 rounded-2xl p-5 overflow-hidden relative"
-        style={{ backgroundColor: 'oklch(0.29 0.072 160)' }}
+        style={{ backgroundColor: 'oklch(0.22 0.068 157)' }}
       >
         <div className="flex items-start justify-between mb-4">
           <div>
@@ -42,43 +49,43 @@ export function TourPage() {
         {/* Score board */}
         {lbLoading ? (
           <Skeleton className="h-20 rounded-xl" />
-        ) : leaderboard && (
+        ) : leaderboard != null && (
           <div className="flex rounded-xl overflow-hidden">
             {/* 93s */}
             <TeamScore
               team="93s"
-              score={leaderboard['93s'].total}
-              day1={leaderboard['93s'].day1}
-              day2={leaderboard['93s'].day2}
-              target={leaderboard.target}
+              score={leaderboard!['93s'].total}
+              day1={leaderboard!['93s'].day1}
+              day2={leaderboard!['93s'].day2}
+              target={leaderboard!.target}
             />
             {/* Divider */}
             <div className="w-px bg-white/10" />
             {/* 91s */}
             <TeamScore
               team="91s"
-              score={leaderboard['91s'].total}
-              day1={leaderboard['91s'].day1}
-              day2={leaderboard['91s'].day2}
-              target={leaderboard.target}
+              score={leaderboard!['91s'].total}
+              day1={leaderboard!['91s'].day1}
+              day2={leaderboard!['91s'].day2}
+              target={leaderboard!.target}
             />
           </div>
         )}
 
         {/* Target indicator */}
-        {leaderboard && (
+        {leaderboard != null && (
           <div className="mt-3 flex items-center gap-2">
             <div className="flex-1 h-2 rounded-full bg-white/20 overflow-hidden">
               <div
                 className="h-full rounded-full transition-all"
                 style={{
-                  width: `${((leaderboard['93s'].total + leaderboard['91s'].total) / (leaderboard.target * 2)) * 100}%`,
-                  backgroundColor: 'oklch(0.91 0.19 106)',
+                  width: `${((leaderboard!['93s'].total + leaderboard!['91s'].total) / (leaderboard!.target * 2)) * 100}%`,
+                  backgroundColor: 'oklch(0.80 0.14 72)',
                 }}
               />
             </div>
             <span className="text-xs text-white/60">
-              Target: {leaderboard.target}
+              Target: {leaderboard!.target}
             </span>
           </div>
         )}
@@ -209,6 +216,51 @@ function QuickLinkCard({
         <p className="text-xs text-muted-foreground">{subtitle}</p>
       </div>
     </button>
+  )
+}
+
+function TourComingSoon() {
+  return (
+    <div className="py-4">
+      <div
+        className="mx-4 mb-5 rounded-2xl p-5 overflow-hidden relative"
+        style={{ backgroundColor: GREEN }}
+      >
+        {/* Header row */}
+        <div className="flex items-start justify-between mb-4">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-widest text-white/60 mb-0.5">Tour 2026</p>
+            <h1 className="text-2xl font-black text-white" style={{ fontFamily: "'DM Serif Display', serif" }}>
+              Overberg Tour 2026
+            </h1>
+          </div>
+          <Badge className="text-xs font-bold border-0 bg-white/20 text-white">
+            Coming Soon
+          </Badge>
+        </div>
+
+        {/* Scoreboard — hardcoded 0 – 0 */}
+        <div className="flex rounded-xl overflow-hidden">
+          <TeamScore team="93s" score={0} day1={0} day2={0} />
+          <div className="w-px bg-white/10" />
+          <TeamScore team="91s" score={0} day1={0} day2={0} />
+        </div>
+      </div>
+
+      {/* Coming soon message */}
+      <div className="mx-4 rounded-2xl bg-card ring-1 ring-black/[0.04] shadow-sm flex flex-col items-center justify-center py-12 px-6 text-center gap-3">
+        <div
+          className="h-14 w-14 rounded-full flex items-center justify-center mb-1"
+          style={{ backgroundColor: `${GOLD}18` }}
+        >
+          <Flag className="h-7 w-7" style={{ color: GOLD }} />
+        </div>
+        <p className="text-base font-black text-foreground">Schedule coming soon</p>
+        <p className="text-sm text-muted-foreground max-w-[240px] leading-relaxed">
+          The Overberg Tour 2026 schedule and live scores will appear here once the season kicks off.
+        </p>
+      </div>
+    </div>
   )
 }
 

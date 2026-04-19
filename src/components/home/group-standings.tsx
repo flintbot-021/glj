@@ -1,7 +1,6 @@
 import { useRef, useState } from 'react'
 import { useAllGroupStandings } from '@/hooks/use-data'
 import { PlayerAvatar } from '@/components/ui/player-avatar'
-import { Skeleton } from '@/components/ui/skeleton'
 import { formatPoints, profileDisplayName } from '@/lib/format'
 import { cn } from '@/lib/utils'
 
@@ -20,8 +19,37 @@ export function GroupStandings() {
   if (isLoading) {
     return (
       <div className="flex gap-3 overflow-x-hidden px-4">
-        {[0, 1, 2].map((i) => (
-          <Skeleton key={i} className="h-56 w-72 flex-shrink-0 rounded-xl" />
+        {[0, 1].map((i) => (
+          <div
+            key={i}
+            className="flex-shrink-0 rounded-xl overflow-hidden animate-pulse"
+            style={{ width: 'calc(85vw)', maxWidth: 320, backgroundColor: 'oklch(0.22 0.068 157)' }}
+          >
+            {/* Header */}
+            <div className="px-4 py-3 flex items-center justify-between" style={{ borderBottom: '1px solid oklch(0.30 0.068 157)' }}>
+              <div className="h-3.5 w-24 rounded-full bg-white/15" />
+              <div className="h-3 w-12 rounded-full bg-white/10" />
+            </div>
+            {/* Column labels */}
+            <div className="px-4 pt-2 pb-1 flex justify-between">
+              <div className="h-2.5 w-12 rounded-full bg-white/10" />
+              <div className="flex gap-6">
+                {[0,1,2].map(j => <div key={j} className="h-2.5 w-6 rounded-full bg-white/10" />)}
+              </div>
+            </div>
+            {/* Rows */}
+            {[0,1,2,3,4].map((j) => (
+              <div key={j} className="px-4 py-2.5 flex items-center gap-3" style={{ borderTop: '1px solid oklch(0.30 0.068 157 / 0.5)' }}>
+                <div className="h-3 w-4 rounded-full bg-white/10" />
+                <div className="h-7 w-7 rounded-full bg-white/15" />
+                <div className="flex-1 h-3 rounded-full bg-white/15" style={{ maxWidth: `${55 + j * 8}%` }} />
+                <div className="flex gap-5">
+                  {[0,1].map(k => <div key={k} className="h-3 w-5 rounded-full bg-white/10" />)}
+                  <div className="h-3 w-7 rounded-full bg-white/20" />
+                </div>
+              </div>
+            ))}
+          </div>
         ))}
       </div>
     )
@@ -42,13 +70,13 @@ export function GroupStandings() {
             style={{
               width: 'calc(85vw)',
               maxWidth: 320,
-              backgroundColor: 'oklch(0.29 0.072 160)',
+              backgroundColor: 'oklch(0.22 0.068 157)',
             }}
           >
             {/* Group header */}
             <div
               className="px-4 py-3 flex items-center justify-between"
-              style={{ borderBottom: '1px solid oklch(0.36 0.06 160)' }}
+              style={{ borderBottom: '1px solid oklch(0.30 0.068 157)' }}
             >
               <h3 className="text-sm font-bold uppercase tracking-wider text-white/80">
                 {group.name}
@@ -88,7 +116,7 @@ export function GroupStandings() {
                     </span>
                     <span
                       className="text-sm font-black w-8 text-right"
-                      style={{ color: 'oklch(0.91 0.19 106)' }}
+                      style={{ color: 'oklch(0.80 0.14 72)' }}
                     >
                       {formatPoints(s.total_points)}
                     </span>
@@ -114,7 +142,7 @@ export function GroupStandings() {
             className="h-1.5 rounded-full transition-all"
             style={{
               width: i === activeIndex ? 16 : 6,
-              backgroundColor: i === activeIndex ? 'oklch(0.91 0.19 106)' : 'oklch(0.70 0 0)',
+              backgroundColor: i === activeIndex ? 'oklch(0.80 0.14 72)' : 'oklch(0.70 0 0)',
             }}
           />
         ))}

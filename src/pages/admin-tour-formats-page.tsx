@@ -13,6 +13,7 @@ import {
   useUpdateTourFormatMutation,
 } from '@/hooks/use-data'
 import { Skeleton } from '@/components/ui/skeleton'
+import { TOUR_FORMAT_PRESETS, formatHasPreset, type TourFormatPresetId } from '@/lib/tour-format-presets'
 import type { TourFormat } from '@/lib/types'
 
 export function AdminTourFormatsPage() {
@@ -59,6 +60,17 @@ export function AdminTourFormatsPage() {
     )
   }
 
+  const presetAlreadyAdded = (presetId: TourFormatPresetId) =>
+    formats?.some((f) => formatHasPreset(f.scoring_rules, presetId)) ?? false
+
+  const onAddPreset = (preset: (typeof TOUR_FORMAT_PRESETS)[number]) => {
+    insertF.mutate({
+      name: preset.name,
+      description: preset.description,
+      scoring_rules: { ...preset.scoring_rules },
+    })
+  }
+
   return (
     <div className="py-4 px-4 max-w-2xl">
       <div className="mb-5 flex items-center gap-3">
@@ -76,7 +88,35 @@ export function AdminTourFormatsPage() {
       ) : (
         <>
           <div className="rounded-xl border border-border bg-card p-4 mb-6 space-y-3">
-            <p className="text-sm font-semibold">New format</p>
+            <p className="text-sm font-semibold">Preset formats</p>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              One-click adds a row with a standard name, description, and <code className="text-[11px]">scoring_rules</code>{' '}
+              (<code className="text-[11px]">preset</code> is used to recognise the template later).
+            </p>
+            <div className="flex flex-col sm:flex-row gap-2">
+              {TOUR_FORMAT_PRESETS.map((preset) => {
+                const done = presetAlreadyAdded(preset.id)
+                return (
+                  <Button
+                    key={preset.id}
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    className="flex-1 h-auto py-3 flex-col items-stretch gap-1 whitespace-normal text-left"
+                    disabled={insertF.isPending || done}
+                    onClick={() => onAddPreset(preset)}
+                  >
+                    <span className="font-semibold">{preset.name}</span>
+                    <span className="text-xs font-normal text-muted-foreground line-clamp-2">{preset.description}</span>
+                    {done && <span className="text-[11px] text-muted-foreground">Already in list</span>}
+                  </Button>
+                )
+              })}
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-border bg-card p-4 mb-6 space-y-3">
+            <p className="text-sm font-semibold">Custom format</p>
             <div className="space-y-1">
               <Label>Name</Label>
               <Input value={name} onChange={(e) => setName(e.target.value)} />

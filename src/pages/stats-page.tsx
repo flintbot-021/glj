@@ -31,7 +31,7 @@ export function StatsPage() {
               'flex-shrink-0 px-4 py-2 rounded-full text-sm font-semibold transition-all capitalize',
               tab === t ? 'text-primary-foreground' : 'bg-muted text-muted-foreground'
             )}
-            style={tab === t ? { backgroundColor: 'oklch(0.29 0.072 160)' } : undefined}
+            style={tab === t ? { backgroundColor: 'oklch(0.22 0.068 157)' } : undefined}
           >
             {t}
           </button>
@@ -156,7 +156,7 @@ function MatchplayStats({ playerId }: { playerId: string }) {
                 )}>
                   {profileDisplayName(entry.player)}
                 </span>
-                <span className="text-sm font-black" style={{ color: 'oklch(0.91 0.19 106)' }}>
+                <span className="text-sm font-black" style={{ color: 'oklch(0.80 0.14 72)' }}>
                   {formatPoints(entry.points)}
                 </span>
               </div>

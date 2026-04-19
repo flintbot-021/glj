@@ -9,6 +9,7 @@ import type {
   BonusPointAward,
   KnockoutFixture,
   Wager,
+  TeamWager,
   WalletTransaction,
   ActivityFeedItem,
   AppNotification,
@@ -114,6 +115,10 @@ export function mapSubSeason(r: Record<string, unknown>): SubSeason {
 }
 
 export function mapStrokeplayRound(r: Record<string, unknown>): StrokeplayRound {
+  const present = r.present_player_ids
+  const present_player_ids = Array.isArray(present)
+    ? present.map((id) => String(id))
+    : []
   return {
     id: String(r.id),
     player_id: String(r.player_id),
@@ -123,6 +128,7 @@ export function mapStrokeplayRound(r: Record<string, unknown>): StrokeplayRound 
     course_handicap: num(r.course_handicap),
     gross_score: num(r.gross_score),
     net_score: num(r.net_score),
+    present_player_ids,
     counts_for_ranking: Boolean(r.counts_for_ranking),
     created_at: String(r.created_at),
   }
@@ -169,6 +175,28 @@ export function mapWager(r: Record<string, unknown>): Wager {
     result_played_at: r.result_played_at != null ? String(r.result_played_at) : undefined,
     proposer_confirmed: Boolean(r.proposer_confirmed),
     opponent_confirmed: Boolean(r.opponent_confirmed),
+    settled_at: r.settled_at != null ? String(r.settled_at) : undefined,
+    created_at: String(r.created_at),
+  }
+}
+
+export function mapTeamWager(r: Record<string, unknown>): TeamWager {
+  return {
+    id: String(r.id),
+    created_by: String(r.created_by),
+    team_a_p1: String(r.team_a_p1),
+    team_a_p2: String(r.team_a_p2),
+    team_b_p1: String(r.team_b_p1),
+    team_b_p2: String(r.team_b_p2),
+    amount: num(r.amount),
+    status: r.status as TeamWager['status'],
+    result_winner_team:
+      r.result_winner_team != null ? (String(r.result_winner_team) as 'a' | 'b') : undefined,
+    result_margin: r.result_margin != null ? String(r.result_margin) : undefined,
+    result_course: r.result_course != null ? String(r.result_course) : undefined,
+    result_played_at: r.result_played_at != null ? String(r.result_played_at) : undefined,
+    team_a_confirmed: Boolean(r.team_a_confirmed),
+    team_b_confirmed: Boolean(r.team_b_confirmed),
     settled_at: r.settled_at != null ? String(r.settled_at) : undefined,
     created_at: String(r.created_at),
   }
