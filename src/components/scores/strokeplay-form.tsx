@@ -49,23 +49,31 @@ export function StrokeplayForm({ onClose, onBack }: Props) {
 
   if (success) {
     return (
-      <div className="flex flex-col items-center justify-center py-12 gap-4">
-        <div className="h-16 w-16 rounded-full flex items-center justify-center"
-          style={{ backgroundColor: 'oklch(0.42 0.15 260 / 0.2)' }}>
-          <CheckCircle2 className="h-8 w-8" style={{ color: 'oklch(0.42 0.15 260)' }} />
+      <div className="flex w-full flex-col items-center gap-4 px-1 pb-2 pt-10">
+        <div
+          className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full"
+          style={{ backgroundColor: 'oklch(0.42 0.15 260 / 0.2)' }}
+        >
+          <CheckCircle2 className="h-10 w-10" style={{ color: 'oklch(0.42 0.15 260)' }} />
         </div>
-        <h3 className="text-xl font-bold">Round Submitted!</h3>
-        {netScore !== null && (
-          <div className="text-center">
-            <p className="text-4xl font-black" style={{ color: 'oklch(0.29 0.072 160)' }}>
-              Net {netScore}
-            </p>
-            <p className="text-sm text-muted-foreground mt-1">
-              {gross} gross — course HCP {courseHandicap}
-            </p>
-          </div>
-        )}
-        <Button onClick={onClose} className="mt-4 w-full" style={{ backgroundColor: 'oklch(0.42 0.15 260)' }}>
+        <div className="space-y-2 text-center">
+          <h3 className="text-lg font-bold">Round submitted</h3>
+          {netScore !== null && (
+            <div>
+              <p className="text-4xl font-black" style={{ color: 'oklch(0.29 0.072 160)' }}>
+                Net {netScore}
+              </p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {gross} gross — course HCP {courseHandicap}
+              </p>
+            </div>
+          )}
+        </div>
+        <Button
+          onClick={onClose}
+          className="mt-1 h-auto min-h-12 w-full rounded-xl px-3 py-3 text-center text-sm font-bold leading-snug text-primary-foreground shadow-none active:translate-y-0 [box-shadow:none]"
+          style={{ backgroundColor: 'oklch(0.42 0.15 260)' }}
+        >
           Done
         </Button>
       </div>
@@ -74,7 +82,7 @@ export function StrokeplayForm({ onClose, onBack }: Props) {
 
   return (
     <>
-      <SheetHeader className="mb-6">
+      <SheetHeader className="mb-0 px-0 pt-3 pb-1">
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="icon" onClick={onBack} className="h-8 w-8">
             <ChevronLeft className="h-4 w-4" />
@@ -173,7 +181,7 @@ export function StrokeplayForm({ onClose, onBack }: Props) {
         {/* Net score preview */}
         {netScore !== null && (
           <div
-            className="flex items-center justify-between p-4 rounded-xl"
+            className="flex items-center justify-between px-3 py-2.5 rounded-xl"
             style={{ backgroundColor: 'oklch(0.42 0.15 260 / 0.1)', border: '1px solid oklch(0.42 0.15 260 / 0.3)' }}
           >
             <span className="text-sm font-semibold text-muted-foreground">Net Score</span>

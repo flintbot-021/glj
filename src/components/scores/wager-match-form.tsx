@@ -41,17 +41,25 @@ export function WagerMatchForm({ onClose, onBack }: Props) {
 
   if (success) {
     return (
-      <div className="flex flex-col items-center justify-center py-12 gap-4">
-        <div className="h-16 w-16 rounded-full flex items-center justify-center"
-          style={{ backgroundColor: 'oklch(0.65 0.18 50 / 0.2)' }}>
-          <CheckCircle2 className="h-8 w-8" style={{ color: 'oklch(0.65 0.18 50)' }} />
+      <div className="flex w-full flex-col items-center gap-4 px-1 pb-2 pt-10">
+        <div
+          className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full"
+          style={{ backgroundColor: 'oklch(0.65 0.18 50 / 0.2)' }}
+        >
+          <CheckCircle2 className="h-10 w-10" style={{ color: 'oklch(0.65 0.18 50)' }} />
         </div>
-        <h3 className="text-xl font-bold">Wager Sent!</h3>
-        <p className="text-sm text-muted-foreground text-center">
-          {selectedOpponent ? profileDisplayName(selectedOpponent) : ''} has been notified. The wager will be active once they accept.
-        </p>
-        <Button onClick={onClose} className="mt-4 w-full"
-          style={{ backgroundColor: 'oklch(0.65 0.18 50)' }}>
+        <div className="space-y-2 text-center">
+          <h3 className="text-lg font-bold">Wager sent</h3>
+          <p className="text-sm leading-snug text-muted-foreground">
+            {selectedOpponent ? profileDisplayName(selectedOpponent) : ''} has been notified. The
+            wager will be active once they accept.
+          </p>
+        </div>
+        <Button
+          onClick={onClose}
+          className="mt-1 h-auto min-h-12 w-full rounded-xl px-3 py-3 text-center text-sm font-bold leading-snug text-primary-foreground shadow-none active:translate-y-0 [box-shadow:none]"
+          style={{ backgroundColor: 'oklch(0.65 0.18 50)' }}
+        >
           Done
         </Button>
       </div>
@@ -60,7 +68,7 @@ export function WagerMatchForm({ onClose, onBack }: Props) {
 
   return (
     <>
-      <SheetHeader className="mb-6">
+      <SheetHeader className="mb-0 px-0 pt-3 pb-1">
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="icon" onClick={onBack} className="h-8 w-8">
             <ChevronLeft className="h-4 w-4" />
@@ -69,7 +77,7 @@ export function WagerMatchForm({ onClose, onBack }: Props) {
         </div>
       </SheetHeader>
 
-      <div className="space-y-5">
+      <div className="space-y-4">
         {/* Wallet balance */}
         <div
           className="flex items-center justify-between p-3 rounded-xl"
@@ -89,7 +97,7 @@ export function WagerMatchForm({ onClose, onBack }: Props) {
               <button
                 key={opp.id}
                 onClick={() => setOpponentId(opp.id)}
-                className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-all text-left ${
+                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl border transition-all text-left ${
                   opponentId === opp.id
                     ? 'border-[oklch(0.65_0.18_50)] bg-[oklch(0.65_0.18_50/0.1)]'
                     : 'border-border bg-card'

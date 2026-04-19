@@ -76,6 +76,7 @@ import {
   replaceTourMatchPlayers,
 } from '@/lib/supabase/api'
 import { getLadderSubSeasonId, getBestTwoRounds, ladderTotals } from '@/lib/bonus-ladder'
+import { profileDisplayName } from '@/lib/format'
 import type { Wager, WagerStatus, ActivityFeedItem, TourTeam, BonusLeagueEntry } from '@/lib/types'
 import type { EnrichedWager, EnrichedMatchplayResult, EnrichedFeedItem } from '@/lib/types'
 
@@ -1095,7 +1096,7 @@ export function useSubmitMatchplay() {
         type: 'matchplay',
         actor_id: data.player_a_id,
         secondary_actor_id: data.player_b_id,
-        description: `${a.display_name} vs ${b.display_name} at ${data.course_name}`,
+        description: `${profileDisplayName(a)} vs ${profileDisplayName(b)} at ${data.course_name}`,
         metadata: { result: data.result, margin: data.margin, course: data.course_name },
       })
 
@@ -1136,7 +1137,7 @@ export function useSubmitStrokeplay() {
           season_id: season.id,
           type: 'strokeplay',
           actor_id: data.player_id,
-          description: `${self.display_name} shot a net ${net_score} at ${data.course_name}`,
+          description: `${profileDisplayName(self)} shot a net ${net_score} at ${data.course_name}`,
           metadata: { net_score, course: data.course_name },
         })
       }
