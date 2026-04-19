@@ -1,7 +1,6 @@
 import { useRef, useState } from 'react'
 import { useAllGroupStandings } from '@/hooks/use-data'
 import { PlayerAvatar } from '@/components/ui/player-avatar'
-import { Skeleton } from '@/components/ui/skeleton'
 import { formatPoints, profileDisplayName } from '@/lib/format'
 import { cn } from '@/lib/utils'
 

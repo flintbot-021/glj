@@ -8,10 +8,8 @@ import { profileDisplayName } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import type { Profile, TourPlayer, TourTeam } from '@/lib/types'
 
-const GREEN      = 'oklch(0.22 0.068 157)'
-const GREEN_DARK = 'oklch(0.17 0.055 157)'
-const GOLD       = 'oklch(0.80 0.14 72)'
-const GOLD_FG    = 'oklch(0.18 0.06 60)'
+const GREEN = 'oklch(0.22 0.068 157)'
+const GOLD  = 'oklch(0.80 0.14 72)'
 
 type TourPlayerRow = TourPlayer & { profile: Profile }
 
@@ -51,43 +49,43 @@ export function TourPage() {
         {/* Score board */}
         {lbLoading ? (
           <Skeleton className="h-20 rounded-xl" />
-        ) : leaderboard && (
+        ) : leaderboard != null && (
           <div className="flex rounded-xl overflow-hidden">
             {/* 93s */}
             <TeamScore
               team="93s"
-              score={leaderboard['93s'].total}
-              day1={leaderboard['93s'].day1}
-              day2={leaderboard['93s'].day2}
-              target={leaderboard.target}
+              score={leaderboard!['93s'].total}
+              day1={leaderboard!['93s'].day1}
+              day2={leaderboard!['93s'].day2}
+              target={leaderboard!.target}
             />
             {/* Divider */}
             <div className="w-px bg-white/10" />
             {/* 91s */}
             <TeamScore
               team="91s"
-              score={leaderboard['91s'].total}
-              day1={leaderboard['91s'].day1}
-              day2={leaderboard['91s'].day2}
-              target={leaderboard.target}
+              score={leaderboard!['91s'].total}
+              day1={leaderboard!['91s'].day1}
+              day2={leaderboard!['91s'].day2}
+              target={leaderboard!.target}
             />
           </div>
         )}
 
         {/* Target indicator */}
-        {leaderboard && (
+        {leaderboard != null && (
           <div className="mt-3 flex items-center gap-2">
             <div className="flex-1 h-2 rounded-full bg-white/20 overflow-hidden">
               <div
                 className="h-full rounded-full transition-all"
                 style={{
-                  width: `${((leaderboard['93s'].total + leaderboard['91s'].total) / (leaderboard.target * 2)) * 100}%`,
+                  width: `${((leaderboard!['93s'].total + leaderboard!['91s'].total) / (leaderboard!.target * 2)) * 100}%`,
                   backgroundColor: 'oklch(0.80 0.14 72)',
                 }}
               />
             </div>
             <span className="text-xs text-white/60">
-              Target: {leaderboard.target}
+              Target: {leaderboard!.target}
             </span>
           </div>
         )}

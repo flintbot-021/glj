@@ -2,7 +2,6 @@ import { useLocation, useNavigate } from 'react-router'
 import { Home, Trophy, Banknote, Flag, Settings } from 'lucide-react'
 import { useUIStore } from '@/stores/ui-store'
 import { useAuthStore } from '@/stores/auth-store'
-import { cn } from '@/lib/utils'
 
 const GREEN  = 'oklch(0.22 0.068 157)'
 const BORDER = 'oklch(0.30 0.068 157)'

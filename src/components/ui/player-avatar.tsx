@@ -22,6 +22,7 @@ interface PlayerAvatarProps {
   player: Pick<Profile, 'display_name' | 'initials' | 'id' | 'avatar_url' | 'full_name'>
   size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl'
   className?: string
+  style?: React.CSSProperties
 }
 
 const SIZE_CLASSES = {
@@ -32,7 +33,7 @@ const SIZE_CLASSES = {
   xl: 'h-16 w-16 text-xl',
 }
 
-export function PlayerAvatar({ player, size = 'md', className }: PlayerAvatarProps) {
+export function PlayerAvatar({ player, size = 'md', className, style }: PlayerAvatarProps) {
   const [imgFailed, setImgFailed] = useState(false)
   const label = profileDisplayName(player)
   const [bg, text] = getAvatarColor(label)
@@ -46,7 +47,7 @@ export function PlayerAvatar({ player, size = 'md', className }: PlayerAvatarPro
         SIZE_CLASSES[size],
         className
       )}
-      style={showImg ? undefined : { backgroundColor: bg, color: text }}
+      style={showImg ? style : { backgroundColor: bg, color: text, ...style }}
       title={label}
     >
       {showImg ? (
