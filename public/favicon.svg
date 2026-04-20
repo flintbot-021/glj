@@ -1,4 +1,22 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-  <rect width="32" height="32" rx="8" fill="#1B4332"/>
-  <text x="16" y="22" font-family="Georgia, serif" font-size="16" font-weight="900" fill="#D4ED17" text-anchor="middle">D</text>
+  <defs>
+    <clipPath id="c">
+      <rect width="32" height="32" rx="7"/>
+    </clipPath>
+  </defs>
+  <!-- Background -->
+  <rect width="32" height="32" rx="7" fill="#1a3326"/>
+  <!-- Gold accent strip clipped to rounded rect -->
+  <rect y="26" width="32" height="6" fill="#c9a84c" clip-path="url(#c)"/>
+  <!-- GLJ text -->
+  <text
+    x="16"
+    y="20"
+    font-family="'Arial Black', 'Helvetica Neue', Arial, sans-serif"
+    font-size="12"
+    font-weight="900"
+    fill="white"
+    text-anchor="middle"
+    letter-spacing="0.5"
+  >GLJ</text>
 </svg>
