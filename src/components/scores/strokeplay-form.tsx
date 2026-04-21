@@ -337,7 +337,7 @@ export function StrokeplayForm({ onClose, onBack }: Props) {
               Select everyone who played this round. You&apos;re always included. Add at least one
               playing partner if others were there.
             </p>
-            <div className="mt-3 max-h-48 space-y-2 overflow-y-auto pr-1">
+            <div className="mt-3 space-y-2">
               {sortedPlayers.map((p) => {
                 const isSelf = profile?.id === p.id
                 const on = presentIds.has(p.id)
