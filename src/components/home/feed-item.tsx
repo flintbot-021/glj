@@ -149,22 +149,69 @@ interface FeedItemProps {
   type: FeedItemType
   actor: Profile
   secondary_actor?: Profile
+  /** Strokeplay: profiles for `metadata.played_with_ids` (enriched in `useActivityFeed`). */
+  played_with?: Profile[]
   description: string
   metadata: Record<string, unknown>
   created_at: string
 }
 
-export function FeedItem({ type, actor, secondary_actor, description, metadata, created_at }: FeedItemProps) {
+export function FeedItem({
+  type,
+  actor,
+  secondary_actor,
+  played_with,
+  description,
+  metadata,
+  created_at,
+}: FeedItemProps) {
   const time = formatRelativeTime(created_at)
 
   // ── Strokeplay ──────────────────────────────────────────────────────────
   if (type === 'strokeplay') {
     const { gross, net, hcpFmt, course } = parseStrokeplay(metadata, description)
+    const partners =
+      played_with && played_with.length > 0
+        ? played_with
+        : undefined
+    const partnerAvatars = partners?.slice(0, 4)
+    const partnerAvatarOverflow = partners && partners.length > 4 ? partners.length - 4 : 0
     return (
       <div className="rounded-2xl bg-card p-4 shadow-sm ring-1 ring-black/[0.04]">
         <div className="flex items-start gap-3">
-          <PlayerAvatar player={actor} size="md" />
-          <VsTitle nameA={profileDisplayName(actor)} nameB={null} time={time} course={course} />
+          <div className="flex -space-x-2 flex-shrink-0">
+            <PlayerAvatar player={actor} size="md" className="ring-2 ring-card z-[1]" />
+            {partnerAvatars?.map((p) => (
+              <PlayerAvatar key={p.id} player={p} size="md" className="ring-2 ring-card" />
+            ))}
+            {partnerAvatarOverflow > 0 && (
+              <div
+                className="z-0 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-muted text-[10px] font-bold tabular-nums ring-2 ring-card text-muted-foreground"
+                title={`${partnerAvatarOverflow} more`}
+              >
+                +{partnerAvatarOverflow}
+              </div>
+            )}
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-baseline gap-1.5 flex-wrap">
+              <span className="text-sm font-bold leading-snug text-foreground">
+                {profileDisplayName(actor)}
+              </span>
+            </div>
+            {partners && (
+              <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">
+                Played with{' '}
+                <span className="font-semibold text-foreground">
+                  {partners.map((p) => profileDisplayName(p)).join(', ')}
+                </span>
+              </p>
+            )}
+            <p className="mt-0.5 text-[11px] text-muted-foreground">
+              {time}
+              {course ? ` · ${course}` : ''}
+            </p>
+          </div>
           <TypeBadge type={type} />
         </div>
         {(gross != null || net != null) && (

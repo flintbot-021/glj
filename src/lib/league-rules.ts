@@ -54,7 +54,7 @@ export const TOURNAMENT_STRUCTURE = {
 
 /** Stroke play bonus — eligibility blurb for UI. */
 export const STROKE_BONUS_COPY =
-  'The stroke play bonus league runs across three seasons. Log any round that included another tour member. Top three in each season earn bonus points toward the main standings.'
+  'The stroke play bonus league runs across three seasons. Log any round that included another tour member. You need at least two rounds in each period to appear on the ladder; your best two nets count. Top three in each period earn bonus points toward the main standings.'
 
 /** Match play blurb for UI. */
 export const MATCH_PLAY_COPY =

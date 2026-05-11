@@ -369,6 +369,8 @@ export interface EnrichedTeamWager extends TeamWager {
 export interface EnrichedFeedItem extends ActivityFeedItem {
   actor: Profile
   secondary_actor?: Profile
+  /** Strokeplay: other members present (from metadata); populated when `played_with_ids` is stored. */
+  played_with?: Profile[]
 }
 
 export interface EnrichedMatchplayResult extends MatchplayResult {
@@ -390,7 +392,7 @@ export interface BonusLeagueEntry {
   r1_net?: number
   r2_gross?: number
   r2_net?: number
-  /** Sum of counting net scores (one or two rounds in the leg). */
+  /** Sum of best two net scores in the leg; set only after two rounds are logged. */
   total_net?: number
   /** Sum of `bonus_point_awards.points_awarded` this season (all legs). */
   bonus_points: number

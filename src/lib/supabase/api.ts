@@ -157,6 +157,14 @@ export async function fetchStrokeplayForSubSeasons(subSeasonIds: string[]) {
   return (res.data as Record<string, unknown>[]).map(mapStrokeplayRound)
 }
 
+export async function fetchStrokeplayRoundsByIds(ids: string[]) {
+  const uniq = [...new Set(ids.filter(Boolean))]
+  if (uniq.length === 0) return []
+  const res = await supabase.from('strokeplay_rounds').select('*').in('id', uniq)
+  if (res.error) throw new Error(res.error.message)
+  return (res.data as Record<string, unknown>[]).map(mapStrokeplayRound)
+}
+
 export async function fetchStrokeplayForPlayer(playerId: string) {
   const res = await supabase
     .from('strokeplay_rounds')

@@ -56,8 +56,7 @@ export function AdminRtdBonusPage() {
   }, [players, rounds, selected])
 
   const top3 = useMemo(() => {
-    const finite = ranked.filter((r) => r.best_net < Number.POSITIVE_INFINITY).slice(0, 3)
-    return finite
+    return ranked.filter((r) => r.combined_net < Number.POSITIVE_INFINITY).slice(0, 3)
   }, [ranked])
 
   const [confirmOpen, setConfirmOpen] = useState(false)
@@ -72,6 +71,7 @@ export function AdminRtdBonusPage() {
       player: row.player,
       best_net: row.best_net,
       second_net: row.second_net,
+      combined_net: row.combined_net,
     }))
   }, [selected, top3])
 
@@ -109,8 +109,9 @@ export function AdminRtdBonusPage() {
           </CardHeader>
           <CardContent className="space-y-3">
             <p className="text-xs text-muted-foreground">
-              Only <strong>open</strong> legs can be closed. Ranking uses best net, then second-best net, from
-              rounds in that leg only (same as the app ladder).
+              Only <strong>open</strong> legs can be closed. Each player needs <strong>two</strong> rounds in
+              the leg to rank. Eligible order is by <strong>lowest combined</strong> net (sum of your two lowest
+              rounds), then ties by second-lowest net, then best net — same rule as the app ladder total.
             </p>
             <select
               className="w-full h-9 rounded-lg border border-input bg-background px-2 text-sm"
@@ -141,9 +142,18 @@ export function AdminRtdBonusPage() {
                   <span className="w-6 text-muted-foreground tabular-nums">{i + 1}</span>
                   <PlayerAvatar player={row.player} size="xs" />
                   <span className="flex-1 font-medium truncate">{profileDisplayName(row.player)}</span>
-                  <span className="text-xs text-muted-foreground tabular-nums">
-                    {row.best_net < Number.POSITIVE_INFINITY ? row.best_net.toFixed(1) : '—'} /{' '}
-                    {row.second_net < Number.POSITIVE_INFINITY ? row.second_net.toFixed(1) : '—'}
+                  <span className="text-xs text-muted-foreground tabular-nums text-right">
+                    {row.combined_net < Number.POSITIVE_INFINITY ? (
+                      <>
+                        <span className="font-semibold text-foreground">{row.combined_net.toFixed(1)}</span>
+                        <span className="text-muted-foreground">
+                          {' '}
+                          ({row.best_net.toFixed(1)}+{row.second_net.toFixed(1)})
+                        </span>
+                      </>
+                    ) : (
+                      '—'
+                    )}
                   </span>
                 </div>
               ))}
@@ -169,7 +179,8 @@ export function AdminRtdBonusPage() {
         )}
         {selected && top3.length === 0 && (
           <p className="text-xs text-muted-foreground">
-            No counting rounds yet — you can still close the leg to open the next (no bonus rows written).
+            No one has two counting rounds in this leg yet — you can still close it to open the next (no bonus
+            rows written).
           </p>
         )}
       </div>
@@ -191,8 +202,14 @@ export function AdminRtdBonusPage() {
                 <li key={a.player_id} className="flex items-center gap-2 text-sm">
                   <span className="font-bold w-8">#{a.position}</span>
                   <PlayerAvatar player={a.player} size="xs" />
-                  <span className="flex-1">{profileDisplayName(a.player)}</span>
-                  <span className="font-bold tabular-nums" style={{ color: 'oklch(0.80 0.14 72)' }}>
+                  <span className="min-w-0 flex-1 truncate">{profileDisplayName(a.player)}</span>
+                  <span
+                    className="shrink-0 text-xs tabular-nums text-muted-foreground"
+                    title="Sum of two lowest net scores this leg"
+                  >
+                    {a.combined_net.toFixed(1)}
+                  </span>
+                  <span className="shrink-0 font-bold tabular-nums" style={{ color: 'oklch(0.80 0.14 72)' }}>
                     +{formatPoints(a.points_awarded)}
                   </span>
                 </li>

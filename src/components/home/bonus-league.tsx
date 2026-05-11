@@ -235,7 +235,7 @@ function BonusStandingsToolbar({
   return (
     <div className="flex items-center justify-between gap-3 border-b border-border/70 px-4 pb-2 pt-3">
       <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-        Standings · best two nets
+        Standings · min 2 rounds, best two nets
       </p>
       <div
         className="flex shrink-0 gap-0.5 rounded-lg p-0.5"
@@ -296,7 +296,7 @@ function BonusStandingsSection({
       {noRounds.length > 0 && (
         <div className="border-t border-border/70 pb-3 pt-2">
           <p className="mb-1 px-4 text-center text-xs text-muted-foreground">
-            No counting rounds for this period yet
+            Not on the ladder yet — log two rounds this period (best two nets count)
           </p>
           {noRounds.map((entry) => (
             <div

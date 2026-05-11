@@ -11,6 +11,7 @@ import {
   fetchUnplayedOpponentProfiles,
   fetchSubSeasonsForSeason,
   fetchStrokeplayForSubSeasons,
+  fetchStrokeplayRoundsByIds,
   fetchStrokeplayForPlayer,
   fetchBonusAwardsForSubSeasons,
   fetchKnockoutForSeason,
@@ -90,19 +91,73 @@ import {
 import { getLadderSubSeasonId, getBestTwoRounds, ladderTotals } from '@/lib/bonus-ladder'
 import { profileDisplayName } from '@/lib/format'
 import type {
+  ActivityFeedItem,
+  BonusLeagueEntry,
+  EnrichedFeedItem,
+  EnrichedMatchplayResult,
+  EnrichedTeamWager,
+  EnrichedWager,
+  Profile,
+  StrokeplayRound,
+  TeamWager,
+  TourTeam,
   Wager,
   WagerStatus,
-  TeamWager,
-  ActivityFeedItem,
-  TourTeam,
-  BonusLeagueEntry,
 } from '@/lib/types'
-import type {
-  EnrichedWager,
-  EnrichedTeamWager,
-  EnrichedMatchplayResult,
-  EnrichedFeedItem,
-} from '@/lib/types'
+
+function matchLegacyStrokeplayRound(
+  item: ActivityFeedItem,
+  rounds: StrokeplayRound[],
+): StrokeplayRound | undefined {
+  if (item.type !== 'strokeplay') return undefined
+  const grossRaw = item.metadata?.gross_score
+  const netRaw = item.metadata?.net_score
+  const gross = grossRaw != null && Number.isFinite(Number(grossRaw)) ? Number(grossRaw) : null
+  const net = netRaw != null && Number.isFinite(Number(netRaw)) ? Number(netRaw) : null
+  const course = String(item.metadata?.course ?? '').trim()
+  if (gross == null || net == null || !course) return undefined
+
+  const courseKey = course.toLowerCase()
+  const candidates = rounds.filter(
+    (r) =>
+      r.player_id === item.actor_id &&
+      r.gross_score === gross &&
+      Math.abs(r.net_score - net) < 0.05 &&
+      r.course_name.trim().toLowerCase() === courseKey,
+  )
+  if (candidates.length === 0) return undefined
+  if (candidates.length === 1) return candidates[0]
+  const t = new Date(item.created_at).getTime()
+  return [...candidates].sort(
+    (a, b) =>
+      Math.abs(new Date(a.created_at).getTime() - t) - Math.abs(new Date(b.created_at).getTime() - t),
+  )[0]
+}
+
+/** Partner profile ids for a strokeplay feed row (metadata, linked round, or legacy match). */
+function strokeplayPartnerProfileIds(
+  item: ActivityFeedItem,
+  roundsById: Map<string, StrokeplayRound>,
+  legacyRounds: StrokeplayRound[] | undefined,
+): string[] {
+  const meta = item.metadata
+  if (Array.isArray(meta?.played_with_ids)) {
+    const ids = meta.played_with_ids.filter(
+      (id): id is string => typeof id === 'string' && id.length > 0 && id !== item.actor_id,
+    )
+    if (ids.length > 0) return ids
+  }
+  const rid = meta?.strokeplay_round_id
+  if (typeof rid === 'string' && rid.length > 0) {
+    const r = roundsById.get(rid)
+    if (r) return r.present_player_ids.filter((id) => id !== item.actor_id)
+  }
+  if (legacyRounds?.length) {
+    const found = matchLegacyStrokeplayRound(item, legacyRounds)
+    if (found) return found.present_player_ids.filter((id) => id !== item.actor_id)
+  }
+  return []
+}
 
 // ─── Season context ────────────────────────────────────────────────────────────
 
@@ -645,17 +700,61 @@ export function useActivityFeed(page = 0) {
     queryKey: ['activity-feed', page, season?.id],
     queryFn: async () => {
       const { items, hasMore, total } = await fetchActivityFeedPage(season!.id, page)
+
+      const strokeRoundIds: string[] = []
+      for (const it of items) {
+        if (it.type !== 'strokeplay') continue
+        const rid = it.metadata?.strokeplay_round_id
+        if (typeof rid === 'string' && rid.length > 0) strokeRoundIds.push(rid)
+      }
+      const roundsById = new Map(
+        (await fetchStrokeplayRoundsByIds(strokeRoundIds)).map((r) => [r.id, r]),
+      )
+
+      const needsLegacyStrokePartners = items.some((it) => {
+        if (it.type !== 'strokeplay') return false
+        return strokeplayPartnerProfileIds(it, roundsById, undefined).length === 0
+      })
+
+      let legacyStrokeRounds: StrokeplayRound[] | undefined
+      if (needsLegacyStrokePartners) {
+        const subs = await fetchSubSeasonsForSeason(season!.id)
+        legacyStrokeRounds = await fetchStrokeplayForSubSeasons(subs.map((s) => s.id))
+      }
+
       const ids = new Set<string>()
       items.forEach((it) => {
         ids.add(it.actor_id)
         if (it.secondary_actor_id) ids.add(it.secondary_actor_id)
+        if (it.type === 'strokeplay') {
+          for (const pid of strokeplayPartnerProfileIds(it, roundsById, legacyStrokeRounds)) {
+            ids.add(pid)
+          }
+        }
       })
       const map = await fetchProfileMap([...ids])
-      const enriched: EnrichedFeedItem[] = items.map((item) => ({
-        ...item,
-        actor: map.get(item.actor_id)!,
-        secondary_actor: item.secondary_actor_id ? map.get(item.secondary_actor_id) : undefined,
-      }))
+      const enriched: EnrichedFeedItem[] = items.map((item) => {
+        let played_with: Profile[] | undefined
+        if (item.type === 'strokeplay') {
+          const pids = strokeplayPartnerProfileIds(item, roundsById, legacyStrokeRounds)
+          if (pids.length > 0) {
+            played_with = pids
+              .map((id) => map.get(id))
+              .filter((p): p is Profile => p != null)
+              .sort((a, b) =>
+                profileDisplayName(a).localeCompare(profileDisplayName(b), undefined, {
+                  sensitivity: 'base',
+                }),
+              )
+          }
+        }
+        return {
+          ...item,
+          actor: map.get(item.actor_id)!,
+          secondary_actor: item.secondary_actor_id ? map.get(item.secondary_actor_id) : undefined,
+          played_with,
+        }
+      })
       return { items: enriched, hasMore, total }
     },
     enabled: !!season?.id,
@@ -1291,16 +1390,19 @@ export function useSubmitStrokeplay() {
 
       const self = await getProfile(data.player_id)
       if (self) {
+        const played_with_ids = data.present_player_ids.filter((id) => id !== data.player_id)
         await insertActivityFeed({
           season_id: season.id,
           type: 'strokeplay',
           actor_id: data.player_id,
           description: `${profileDisplayName(self)} shot ${data.gross_score} (hcp ${data.course_handicap}) · net ${net_score} at ${data.course_name}`,
           metadata: {
+            strokeplay_round_id: row.id,
             net_score,
             gross_score: data.gross_score,
             course_handicap: data.course_handicap,
             course: data.course_name,
+            played_with_ids,
           },
         })
       }

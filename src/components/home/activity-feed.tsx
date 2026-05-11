@@ -71,6 +71,7 @@ export function ActivityFeed() {
               type={item.type}
               actor={item.actor}
               secondary_actor={item.secondary_actor}
+              played_with={item.played_with}
               description={item.description}
               metadata={item.metadata}
               created_at={item.created_at}
