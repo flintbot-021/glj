@@ -4,6 +4,7 @@ import type {
   Group,
   GroupMembership,
   MatchplayResult,
+  GrudgeMatch,
   SubSeason,
   StrokeplayRound,
   BonusPointAward,
@@ -94,6 +95,28 @@ export function mapMatchplayResult(r: Record<string, unknown>): MatchplayResult 
     margin: String(r.margin),
     course_name: String(r.course_name),
     played_at: String(r.played_at),
+    created_at: String(r.created_at),
+  }
+}
+
+export function mapGrudgeMatch(r: Record<string, unknown>): GrudgeMatch {
+  return {
+    id: String(r.id),
+    season_id: String(r.season_id),
+    challenger_id: String(r.challenger_id),
+    challenged_id: String(r.challenged_id),
+    status: r.status as GrudgeMatch['status'],
+    result: r.result != null ? (r.result as GrudgeMatch['result']) : undefined,
+    margin: r.margin != null ? String(r.margin) : undefined,
+    course_name: r.course_name != null ? String(r.course_name) : undefined,
+    played_at: r.played_at != null ? String(r.played_at) : undefined,
+    points_challenger: r.points_challenger != null ? num(r.points_challenger) : undefined,
+    points_challenged: r.points_challenged != null ? num(r.points_challenged) : undefined,
+    settled_at: r.settled_at != null ? String(r.settled_at) : undefined,
+    challenger_confirmed: Boolean(r.challenger_confirmed),
+    challenged_confirmed: Boolean(r.challenged_confirmed),
+    result_submitted_by:
+      r.result_submitted_by != null ? String(r.result_submitted_by) : undefined,
     created_at: String(r.created_at),
   }
 }

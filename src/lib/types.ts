@@ -51,6 +51,8 @@ export interface GroupStanding {
   played: number
   points: number
   bonus_points: number
+  /** Points from settled grudge matches this season. */
+  grudge_points: number
   total_points: number
   /** Set when computed via `computeGroupStandings` ordering. */
   position?: number
@@ -71,6 +73,40 @@ export interface MatchplayResult {
   course_name: string
   played_at: string
   created_at: string
+}
+
+// ─── Grudge matches ────────────────────────────────────────────────────────────
+
+export type GrudgeMatchStatus =
+  | 'pending_acceptance'
+  | 'active'
+  | 'pending_confirmation'
+  | 'settled'
+  | 'cancelled'
+export type GrudgeMatchResult = 'win_challenger' | 'win_challenged' | 'draw'
+
+export interface GrudgeMatch {
+  id: string
+  season_id: string
+  challenger_id: string
+  challenged_id: string
+  status: GrudgeMatchStatus
+  result?: GrudgeMatchResult
+  margin?: string
+  course_name?: string
+  played_at?: string
+  points_challenger?: number
+  points_challenged?: number
+  settled_at?: string
+  challenger_confirmed: boolean
+  challenged_confirmed: boolean
+  result_submitted_by?: string
+  created_at: string
+}
+
+export interface EnrichedGrudgeMatch extends GrudgeMatch {
+  challenger: Profile
+  challenged: Profile
 }
 
 // ─── Bonus / Strokeplay ────────────────────────────────────────────────────────
@@ -202,6 +238,7 @@ export type FeedItemType =
   | 'bonus_points'
   | 'knockout'
   | 'tour_score'
+  | 'grudge_match'
 
 export interface ActivityFeedItem {
   id: string
@@ -225,6 +262,10 @@ export type NotificationType =
   | 'sub_season_closed'
   | 'bracket_set'
   | 'tour_update'
+  | 'grudge_request'
+  | 'grudge_accepted'
+  | 'grudge_declined'
+  | 'grudge_result'
 
 export interface AppNotification {
   id: string
@@ -371,6 +412,8 @@ export interface EnrichedFeedItem extends ActivityFeedItem {
   secondary_actor?: Profile
   /** Strokeplay: other members present (from metadata); populated when `played_with_ids` is stored. */
   played_with?: Profile[]
+  /** Strokeplay: calendar date the round was played (YYYY-MM-DD). */
+  played_at?: string
 }
 
 export interface EnrichedMatchplayResult extends MatchplayResult {
@@ -394,7 +437,7 @@ export interface BonusLeagueEntry {
   r2_net?: number
   /** Sum of best two net scores in the leg; set only after two rounds are logged. */
   total_net?: number
-  /** Sum of `bonus_point_awards.points_awarded` this season (all legs). */
+  /** Bonus points awarded for the viewed leg only (snapshot, not season-to-date). */
   bonus_points: number
   rank: number
 }

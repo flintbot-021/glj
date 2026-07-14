@@ -314,14 +314,33 @@ export function WagersPage() {
                     )}
 
                     {w.status === 'active' && (
-                      <Button
-                        size="sm"
-                        className="h-9 w-full rounded-lg font-semibold"
-                        style={{ backgroundColor: GREEN }}
-                        onClick={() => { clearError(); setOutcomeWager(w) }}
-                      >
-                        Record result
-                      </Button>
+                      <div className="flex gap-2">
+                        {isProposer && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-9 flex-1 rounded-lg border-destructive/30 font-semibold text-destructive hover:bg-destructive/5"
+                            disabled={declineWager.isPending}
+                            onClick={() => {
+                              clearError()
+                              declineWager.mutate(w.id, { onError: (e) => setActionError(e.message) })
+                            }}
+                          >
+                            Cancel
+                          </Button>
+                        )}
+                        <Button
+                          size="sm"
+                          className={cn('h-9 rounded-lg font-semibold', isProposer ? 'flex-1' : 'w-full')}
+                          style={{ backgroundColor: GREEN }}
+                          onClick={() => {
+                            clearError()
+                            setOutcomeWager(w)
+                          }}
+                        >
+                          Record result
+                        </Button>
+                      </div>
                     )}
 
                     {w.status === 'pending_confirmation' && myConfirm && (

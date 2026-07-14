@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { differenceInCalendarDays, parseISO, startOfDay } from 'date-fns'
-import { Info, LayoutGrid, List } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Info, LayoutGrid, List } from 'lucide-react'
 import { useBonusLeague, useSubSeasons } from '@/hooks/use-data'
 import { PlayerAvatar } from '@/components/ui/player-avatar'
 import { Badge } from '@/components/ui/badge'
@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/dialog'
 import { formatPoints, formatDate, profileDisplayName } from '@/lib/format'
 import { getLadderSubSeasonId } from '@/lib/bonus-ladder'
+import { filterRevealedSubSeasons } from '@/lib/sub-season'
 import { STROKE_BONUS_COPY } from '@/lib/league-rules'
 import type { BonusLeagueEntry, SubSeason } from '@/lib/types'
 import { cn } from '@/lib/utils'
@@ -64,7 +65,14 @@ function periodVisual(
 }
 
 /** Flat list + header row (group-standings style — no per-row cards or shadows). */
-function BonusStandingsTable({ entries }: { entries: BonusLeagueEntry[] }) {
+function BonusStandingsTable({
+  entries,
+  rankedCount,
+}: {
+  entries: BonusLeagueEntry[]
+  /** How many leading rows are fully ranked (2 rounds). Rest are in-progress. */
+  rankedCount: number
+}) {
   if (entries.length === 0) return null
   return (
     <>
@@ -80,48 +88,52 @@ function BonusStandingsTable({ entries }: { entries: BonusLeagueEntry[] }) {
         </div>
       </div>
       <div className="pb-2">
-        {entries.map((entry, idx) => (
-          <div
-            key={entry.player.id}
-            className={cn(
-              'flex items-center gap-3 border-b border-border/45 px-4 py-2.5 last:border-b-0',
-              idx === 0 && 'bg-muted/35',
-              idx === 1 && 'bg-muted/25',
-              idx === 2 && 'bg-muted/15',
-            )}
-          >
-            <span className="w-4 shrink-0 text-xs font-bold tabular-nums text-muted-foreground">
-              {idx + 1}
-            </span>
-            <PlayerAvatar player={entry.player} size="sm" />
-            <span className="min-w-0 flex-1 truncate pr-2 text-sm font-semibold">
-              {profileDisplayName(entry.player)}
-            </span>
-            <div className="flex shrink-0 justify-end gap-1 tabular-nums">
-              <span className="w-8 text-center text-xs text-muted-foreground">
-                {fmtScore(entry.r1_net)}
+        {entries.map((entry, idx) => {
+          const ranked = idx < rankedCount
+          return (
+            <div
+              key={entry.player.id}
+              className={cn(
+                'flex items-center gap-3 border-b border-border/45 px-4 py-2.5 last:border-b-0',
+                ranked && idx === 0 && 'bg-muted/35',
+                ranked && idx === 1 && 'bg-muted/25',
+                ranked && idx === 2 && 'bg-muted/15',
+                !ranked && 'opacity-80',
+              )}
+            >
+              <span className="w-4 shrink-0 text-xs font-bold tabular-nums text-muted-foreground">
+                {ranked ? idx + 1 : '—'}
               </span>
-              <span className="w-8 text-center text-xs text-muted-foreground">
-                {fmtScore(entry.r2_net)}
+              <PlayerAvatar player={entry.player} size="sm" />
+              <span className="min-w-0 flex-1 truncate pr-2 text-sm font-semibold">
+                {profileDisplayName(entry.player)}
               </span>
-              <span
-                className="w-10 text-right text-sm font-black"
-                style={{ color: 'oklch(0.80 0.14 72)' }}
-              >
-                {fmtScore(entry.total_net)}
-              </span>
-              <span
-                className="w-10 text-right text-sm font-black"
-                style={{
-                  color:
-                    entry.bonus_points > 0 ? 'oklch(0.80 0.14 72)' : 'var(--muted-foreground)',
-                }}
-              >
-                {entry.bonus_points > 0 ? `+${formatPoints(entry.bonus_points)}` : '—'}
-              </span>
+              <div className="flex shrink-0 justify-end gap-1 tabular-nums">
+                <span className="w-8 text-center text-xs text-muted-foreground">
+                  {fmtScore(entry.r1_net)}
+                </span>
+                <span className="w-8 text-center text-xs text-muted-foreground">
+                  {fmtScore(entry.r2_net)}
+                </span>
+                <span
+                  className="w-10 text-right text-sm font-black"
+                  style={{ color: 'oklch(0.80 0.14 72)' }}
+                >
+                  {fmtScore(entry.total_net)}
+                </span>
+                <span
+                  className="w-10 text-right text-sm font-black"
+                  style={{
+                    color:
+                      entry.bonus_points > 0 ? 'oklch(0.80 0.14 72)' : 'var(--muted-foreground)',
+                  }}
+                >
+                  {entry.bonus_points > 0 ? `+${formatPoints(entry.bonus_points)}` : '—'}
+                </span>
+              </div>
             </div>
-          </div>
-        ))}
+          )
+        })}
       </div>
     </>
   )
@@ -138,89 +150,102 @@ function readStandingsLayout(): 'compact' | 'detailed' {
 }
 
 /** Chunky rows with gross + net per counting round (earlier bonus UI). */
-function BonusStandingsCards({ entries }: { entries: BonusLeagueEntry[] }) {
+function BonusStandingsCards({
+  entries,
+  rankedCount,
+}: {
+  entries: BonusLeagueEntry[]
+  rankedCount: number
+}) {
   if (entries.length === 0) return null
   return (
     <div className="space-y-2 px-3 pb-4 pt-2">
-      {entries.map((entry, idx) => (
-        <div
-          key={entry.player.id}
-          className={cn(
-            'rounded-xl border bg-background/80 px-3 py-3 shadow-none',
-            idx === 0 && 'border-yellow-500/45 bg-yellow-500/[0.08]',
-            idx === 1 && 'border-gray-400/35',
-            idx === 2 && 'border-amber-600/40',
-            idx > 2 && 'border-border/80',
-          )}
-        >
-          <div className="flex items-center gap-3">
-            <span
-              className={cn(
-                'flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-sm font-black',
-                idx === 0 && 'bg-yellow-500/20 text-yellow-700',
-                idx === 1 && 'bg-gray-200 text-gray-700',
-                idx === 2 && 'bg-amber-600/15 text-amber-800',
-                idx > 2 && 'bg-muted text-muted-foreground',
-              )}
-            >
-              {idx + 1}
-            </span>
-            <div className="flex min-w-0 flex-1 items-center gap-2">
-              <PlayerAvatar player={entry.player} size="md" />
-              <div className="min-w-0">
-                <p className="truncate text-sm font-bold leading-tight">
-                  {profileDisplayName(entry.player)}
+      {entries.map((entry, idx) => {
+        const ranked = idx < rankedCount
+        return (
+          <div
+            key={entry.player.id}
+            className={cn(
+              'rounded-xl border bg-background/80 px-3 py-3 shadow-none',
+              ranked && idx === 0 && 'border-yellow-500/45 bg-yellow-500/[0.08]',
+              ranked && idx === 1 && 'border-gray-400/35',
+              ranked && idx === 2 && 'border-amber-600/40',
+              ranked && idx > 2 && 'border-border/80',
+              !ranked && 'border-dashed border-border/80 opacity-90',
+            )}
+          >
+            <div className="flex items-center gap-3">
+              <span
+                className={cn(
+                  'flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-sm font-black',
+                  ranked && idx === 0 && 'bg-yellow-500/20 text-yellow-700',
+                  ranked && idx === 1 && 'bg-gray-200 text-gray-700',
+                  ranked && idx === 2 && 'bg-amber-600/15 text-amber-800',
+                  ranked && idx > 2 && 'bg-muted text-muted-foreground',
+                  !ranked && 'bg-muted text-muted-foreground',
+                )}
+              >
+                {ranked ? idx + 1 : '—'}
+              </span>
+              <div className="flex min-w-0 flex-1 items-center gap-2">
+                <PlayerAvatar player={entry.player} size="md" />
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-bold leading-tight">
+                    {profileDisplayName(entry.player)}
+                  </p>
+                  <p className="text-[10px] text-muted-foreground">
+                    {ranked ? 'Strokeplay ladder' : '1 round logged'}
+                  </p>
+                </div>
+              </div>
+              <div className="shrink-0 text-right">
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  Bonus
                 </p>
-                <p className="text-[10px] text-muted-foreground">Strokeplay ladder</p>
+                <p
+                  className="text-base font-black tabular-nums"
+                  style={{
+                    color:
+                      entry.bonus_points > 0 ? 'oklch(0.80 0.14 72)' : 'var(--muted-foreground)',
+                  }}
+                >
+                  {entry.bonus_points > 0 ? `+${formatPoints(entry.bonus_points)}` : '—'}
+                </p>
               </div>
             </div>
-            <div className="shrink-0 text-right">
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                Bonus
-              </p>
-              <p
-                className="text-base font-black tabular-nums"
-                style={{
-                  color:
-                    entry.bonus_points > 0 ? 'oklch(0.80 0.14 72)' : 'var(--muted-foreground)',
-                }}
+            <div className="mt-3 grid grid-cols-3 gap-2 border-t border-border/70 pt-3">
+              <div className="rounded-xl bg-muted/50 px-2 py-2 text-center">
+                <p className="text-[9px] font-bold uppercase tracking-wide text-muted-foreground">
+                  R1
+                </p>
+                <p className="text-sm font-semibold tabular-nums">{fmtScore(entry.r1_gross)}</p>
+                <p className="text-[10px] text-muted-foreground">Net {fmtScore(entry.r1_net)}</p>
+              </div>
+              <div className="rounded-xl bg-muted/50 px-2 py-2 text-center">
+                <p className="text-[9px] font-bold uppercase tracking-wide text-muted-foreground">
+                  R2
+                </p>
+                <p className="text-sm font-semibold tabular-nums">{fmtScore(entry.r2_gross)}</p>
+                <p className="text-[10px] text-muted-foreground">Net {fmtScore(entry.r2_net)}</p>
+              </div>
+              <div
+                className="rounded-xl px-2 py-2 text-center"
+                style={{ backgroundColor: 'oklch(0.35 0.10 160 / 0.12)' }}
               >
-                {entry.bonus_points > 0 ? `+${formatPoints(entry.bonus_points)}` : '—'}
-              </p>
+                <p className="text-[9px] font-bold uppercase tracking-wide text-muted-foreground">
+                  Total
+                </p>
+                <p
+                  className="text-lg font-black tabular-nums"
+                  style={{ color: 'oklch(0.35 0.10 160)' }}
+                >
+                  {fmtScore(entry.total_net)}
+                </p>
+              </div>
             </div>
           </div>
-          <div className="mt-3 grid grid-cols-3 gap-2 border-t border-border/70 pt-3">
-            <div className="rounded-xl bg-muted/50 px-2 py-2 text-center">
-              <p className="text-[9px] font-bold uppercase tracking-wide text-muted-foreground">
-                R1
-              </p>
-              <p className="text-sm font-semibold tabular-nums">{fmtScore(entry.r1_gross)}</p>
-              <p className="text-[10px] text-muted-foreground">Net {fmtScore(entry.r1_net)}</p>
-            </div>
-            <div className="rounded-xl bg-muted/50 px-2 py-2 text-center">
-              <p className="text-[9px] font-bold uppercase tracking-wide text-muted-foreground">
-                R2
-              </p>
-              <p className="text-sm font-semibold tabular-nums">{fmtScore(entry.r2_gross)}</p>
-              <p className="text-[10px] text-muted-foreground">Net {fmtScore(entry.r2_net)}</p>
-            </div>
-            <div
-              className="rounded-xl px-2 py-2 text-center"
-              style={{ backgroundColor: 'oklch(0.35 0.10 160 / 0.12)' }}
-            >
-              <p className="text-[9px] font-bold uppercase tracking-wide text-muted-foreground">
-                Total
-              </p>
-              <p
-                className="text-lg font-black tabular-nums"
-                style={{ color: 'oklch(0.35 0.10 160)' }}
-              >
-                {fmtScore(entry.total_net)}
-              </p>
-            </div>
-          </div>
-        </div>
-      ))}
+        )
+      })}
     </div>
   )
 }
@@ -235,7 +260,7 @@ function BonusStandingsToolbar({
   return (
     <div className="flex items-center justify-between gap-3 border-b border-border/70 px-4 pb-2 pt-3">
       <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-        Standings · min 2 rounds, best two nets
+        Standings · this leg only · min 2 rounds, best two nets
       </p>
       <div
         className="flex shrink-0 gap-0.5 rounded-lg p-0.5"
@@ -278,25 +303,35 @@ function BonusStandingsSection({
   layout,
   onLayoutChange,
   filtered,
+  inProgress,
   noRounds,
 }: {
   layout: 'compact' | 'detailed'
   onLayoutChange: (v: 'compact' | 'detailed') => void
+  /** Two counting rounds — ranked on the ladder. */
   filtered: BonusLeagueEntry[]
+  /** One counting round — shown with R1, not yet ranked. */
+  inProgress: BonusLeagueEntry[]
   noRounds: BonusLeagueEntry[]
 }) {
+  const tableEntries = [...filtered, ...inProgress]
   return (
     <>
       <BonusStandingsToolbar layout={layout} onLayoutChange={onLayoutChange} />
       {layout === 'compact' ? (
-        <BonusStandingsTable entries={filtered} />
+        <BonusStandingsTable entries={tableEntries} rankedCount={filtered.length} />
       ) : (
-        <BonusStandingsCards entries={filtered} />
+        <BonusStandingsCards entries={tableEntries} rankedCount={filtered.length} />
+      )}
+      {inProgress.length > 0 && filtered.length === 0 && (
+        <p className="px-4 pb-2 text-center text-[11px] text-muted-foreground">
+          Need two rounds to rank — showing rounds logged so far
+        </p>
       )}
       {noRounds.length > 0 && (
         <div className="border-t border-border/70 pb-3 pt-2">
           <p className="mb-1 px-4 text-center text-xs text-muted-foreground">
-            Not on the ladder yet — log two rounds this period (best two nets count)
+            No rounds this period yet
           </p>
           {noRounds.map((entry) => (
             <div
@@ -322,23 +357,48 @@ export function BonusLeague() {
   const { data: subSeasons } = useSubSeasons()
   const sortedSubs = useMemo(
     () =>
-      [...(subSeasons ?? [])].sort((a, b) => a.start_date.localeCompare(b.start_date)),
+      filterRevealedSubSeasons(subSeasons).sort((a, b) => a.start_date.localeCompare(b.start_date)),
     [subSeasons],
   )
 
   const ladderLegId = getLadderSubSeasonId(subSeasons)
-  const initialIndex = useMemo(() => {
-    const i = sortedSubs.findIndex((s) => s.id === ladderLegId)
-    return i >= 0 ? i : 0
+  /** Prefer the open leg; fall back to ladder helper, then latest revealed. */
+  const defaultIndex = useMemo(() => {
+    if (sortedSubs.length === 0) return 0
+    const openIdx = sortedSubs.findIndex((s) => s.status === 'open')
+    if (openIdx >= 0) return openIdx
+    if (ladderLegId) {
+      const ladderIdx = sortedSubs.findIndex((s) => s.id === ladderLegId)
+      if (ladderIdx >= 0) return ladderIdx
+    }
+    return sortedSubs.length - 1
   }, [sortedSubs, ladderLegId])
 
-  const [index, setIndex] = useState(initialIndex)
+  const [index, setIndex] = useState(defaultIndex)
+  const [prevDefaultIndex, setPrevDefaultIndex] = useState(defaultIndex)
+  if (prevDefaultIndex !== defaultIndex) {
+    setPrevDefaultIndex(defaultIndex)
+    setIndex(defaultIndex)
+  }
+
   const scrollerRef = useRef<HTMLDivElement>(null)
   const scrollRaf = useRef<number>(0)
 
-  useEffect(() => {
-    setIndex(initialIndex)
-  }, [initialIndex])
+  const scrollToDefault = useCallback(() => {
+    const el = scrollerRef.current
+    if (!el || sortedSubs.length === 0) return
+    const w = el.clientWidth
+    if (w <= 0) return
+    el.scrollTo({ left: defaultIndex * w, behavior: 'auto' })
+  }, [defaultIndex, sortedSubs.length])
+
+  const setScrollerNode = useCallback(
+    (node: HTMLDivElement | null) => {
+      scrollerRef.current = node
+      if (node) requestAnimationFrame(() => scrollToDefault())
+    },
+    [scrollToDefault],
+  )
 
   useEffect(() => {
     try {
@@ -348,10 +408,21 @@ export function BonusLeague() {
     }
   }, [standingsLayout])
 
-  const viewedSub = sortedSubs[index]
+  const viewedSub = sortedSubs[index] ?? sortedSubs[defaultIndex]
   const { data: entries, isLoading } = useBonusLeague(viewedSub?.id ?? null)
 
   const today = new Date().toISOString().slice(0, 10)
+
+  const goToIndex = useCallback(
+    (i: number) => {
+      const el = scrollerRef.current
+      if (!el || sortedSubs.length === 0) return
+      const next = Math.min(Math.max(0, i), sortedSubs.length - 1)
+      el.scrollTo({ left: next * el.clientWidth, behavior: 'smooth' })
+      setIndex(next)
+    },
+    [sortedSubs.length],
+  )
 
   const syncIndexFromScroll = useCallback(() => {
     const el = scrollerRef.current
@@ -366,13 +437,6 @@ export function BonusLeague() {
     scrollRaf.current = requestAnimationFrame(syncIndexFromScroll)
   }, [syncIndexFromScroll])
 
-  useLayoutEffect(() => {
-    const el = scrollerRef.current
-    if (!el || sortedSubs.length === 0) return
-    const w = el.clientWidth
-    el.scrollTo({ left: initialIndex * w, behavior: 'auto' })
-  }, [initialIndex, sortedSubs.length])
-
   useEffect(() => {
     const el = scrollerRef.current
     if (!el) return
@@ -381,7 +445,22 @@ export function BonusLeague() {
     return () => el.removeEventListener('scrollend', onEnd)
   }, [syncIndexFromScroll])
 
-  if (isLoading && !entries) {
+  // Keep scroll position aligned when the open leg changes.
+  useEffect(() => {
+    requestAnimationFrame(() => scrollToDefault())
+  }, [scrollToDefault])
+
+  const filtered = entries?.filter((e) => e.total_net !== undefined) ?? []
+  const inProgress =
+    entries
+      ?.filter((e) => e.total_net === undefined && e.rounds.length >= 1)
+      .sort((a, b) => (a.r1_net ?? 999) - (b.r1_net ?? 999)) ?? []
+  const noRounds =
+    entries?.filter((e) => e.total_net === undefined && e.rounds.length === 0) ?? []
+
+  const isViewingLiveLeg = viewedSub != null && ladderLegId === viewedSub.id
+
+  if (!subSeasons) {
     return (
       <div className="space-y-2 px-4">
         {[0, 1, 2, 4, 5].map((i) => (
@@ -390,11 +469,6 @@ export function BonusLeague() {
       </div>
     )
   }
-
-  const filtered = entries?.filter((e) => e.total_net !== undefined) ?? []
-  const noRounds = entries?.filter((e) => e.total_net === undefined) ?? []
-
-  const isViewingLiveLeg = viewedSub != null && ladderLegId === viewedSub.id
 
   return (
     <div className="space-y-4">
@@ -426,7 +500,7 @@ export function BonusLeague() {
             }}
           >
             <div
-              ref={scrollerRef}
+              ref={setScrollerNode}
               onScroll={onScroll}
               className="flex overflow-x-auto scroll-smooth snap-x snap-mandatory scrollbar-hide"
             >
@@ -511,26 +585,45 @@ export function BonusLeague() {
             </div>
 
             {sortedSubs.length > 1 && (
-              <div className="flex justify-center gap-1.5 px-4 pb-3 pt-1">
-                {sortedSubs.map((sub, i) => (
-                  <button
-                    key={sub.id}
-                    type="button"
-                    aria-label={`Show ${sub.name}`}
-                    onClick={() => {
-                      const el = scrollerRef.current
-                      if (!el) return
-                      el.scrollTo({ left: i * el.clientWidth, behavior: 'smooth' })
-                      setIndex(i)
-                    }}
-                    className="h-1.5 rounded-full transition-all"
-                    style={{
-                      width: i === index ? 16 : 6,
-                      backgroundColor:
-                        i === index ? 'oklch(0.80 0.14 72)' : 'oklch(0.70 0 0)',
-                    }}
-                  />
-                ))}
+              <div className="flex items-center justify-between gap-2 px-2 pb-3 pt-1">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  className="h-8 w-8 shrink-0 text-white/70 hover:bg-white/10 hover:text-white disabled:opacity-30"
+                  aria-label="Previous scoring period"
+                  disabled={index <= 0}
+                  onClick={() => goToIndex(index - 1)}
+                >
+                  <ChevronLeft className="h-5 w-5" />
+                </Button>
+                <div className="flex justify-center gap-1.5">
+                  {sortedSubs.map((sub, i) => (
+                    <button
+                      key={sub.id}
+                      type="button"
+                      aria-label={`Show ${sub.name}`}
+                      onClick={() => goToIndex(i)}
+                      className="h-1.5 rounded-full transition-all"
+                      style={{
+                        width: i === index ? 16 : 6,
+                        backgroundColor:
+                          i === index ? 'oklch(0.80 0.14 72)' : 'oklch(0.70 0 0)',
+                      }}
+                    />
+                  ))}
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  className="h-8 w-8 shrink-0 text-white/70 hover:bg-white/10 hover:text-white disabled:opacity-30"
+                  aria-label="Next scoring period"
+                  disabled={index >= sortedSubs.length - 1}
+                  onClick={() => goToIndex(index + 1)}
+                >
+                  <ChevronRight className="h-5 w-5" />
+                </Button>
               </div>
             )}
           </div>
@@ -546,23 +639,41 @@ export function BonusLeague() {
             </p>
           )}
 
-          <BonusStandingsSection
-            layout={standingsLayout}
-            onLayoutChange={setStandingsLayout}
-            filtered={filtered}
-            noRounds={noRounds}
-          />
+          {isLoading && !entries ? (
+            <div className="space-y-2 px-4 py-4">
+              {[0, 1, 2, 3].map((i) => (
+                <Skeleton key={i} className="h-12 rounded-xl" />
+              ))}
+            </div>
+          ) : (
+            <BonusStandingsSection
+              layout={standingsLayout}
+              onLayoutChange={setStandingsLayout}
+              filtered={filtered}
+              inProgress={inProgress}
+              noRounds={noRounds}
+            />
+          )}
         </div>
       )}
 
       {sortedSubs.length === 0 && (
         <div className="mx-4 overflow-hidden rounded-xl border border-border/90 bg-card shadow-none">
-          <BonusStandingsSection
-            layout={standingsLayout}
-            onLayoutChange={setStandingsLayout}
-            filtered={filtered}
-            noRounds={noRounds}
-          />
+          {isLoading && !entries ? (
+            <div className="space-y-2 px-4 py-4">
+              {[0, 1, 2, 3].map((i) => (
+                <Skeleton key={i} className="h-12 rounded-xl" />
+              ))}
+            </div>
+          ) : (
+            <BonusStandingsSection
+              layout={standingsLayout}
+              onLayoutChange={setStandingsLayout}
+              filtered={filtered}
+              inProgress={inProgress}
+              noRounds={noRounds}
+            />
+          )}
         </div>
       )}
     </div>

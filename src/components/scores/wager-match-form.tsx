@@ -55,10 +55,10 @@ export function WagerMatchForm({ onClose, onBack }: Props) {
           <CheckCircle2 className="h-10 w-10" style={{ color: WAGER_ACCENT }} />
         </div>
         <div className="space-y-2 text-center">
-          <h3 className="text-lg font-bold">Wager sent</h3>
+          <h3 className="text-lg font-bold">Wager open</h3>
           <p className="text-sm leading-snug text-muted-foreground">
-            {selectedOpponent ? profileDisplayName(selectedOpponent) : ''} has been notified. The
-            wager will be active once they accept.
+            {selectedOpponent ? profileDisplayName(selectedOpponent) : ''} has been notified. Either
+            of you can record the result; the other confirms once.
           </p>
         </div>
         <Button
@@ -110,7 +110,7 @@ export function WagerMatchForm({ onClose, onBack }: Props) {
         <div>
           <p className="text-sm font-semibold">Choose opponent</p>
           <p className="mt-0.5 text-xs text-muted-foreground">
-            Select a player to challenge — they&apos;ll get a notification to accept.
+            Select a player to challenge — the wager opens immediately.
           </p>
           {opponents.length === 0 ? (
             <div className="mt-3 rounded-xl border border-border bg-muted/30 px-3 py-6 text-center">
@@ -200,7 +200,7 @@ export function WagerMatchForm({ onClose, onBack }: Props) {
           className="h-auto min-h-12 w-full rounded-xl px-3 py-3 text-center text-sm font-bold leading-snug"
           style={{ backgroundColor: WAGER_ACCENT, color: 'white' }}
         >
-          {createWager.isPending ? 'Sending…' : 'Send wager challenge'}
+          {createWager.isPending ? 'Opening…' : 'Open wager'}
         </Button>
       </div>
     </>

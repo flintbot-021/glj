@@ -10,6 +10,7 @@ import { useActiveSeason, useOpenSubSeasons, useSubmitStrokeplay, usePlayers } f
 import { KNOWN_COURSES } from '@/lib/constants'
 import { PlayerAvatar } from '@/components/ui/player-avatar'
 import { profileDisplayName } from '@/lib/format'
+import { clampDateToRange, isPlayedAtInSubSeasonWindow } from '@/lib/sub-season'
 import { cn } from '@/lib/utils'
 
 interface Props {
@@ -75,6 +76,18 @@ export function StrokeplayForm({ onClose, onBack }: Props) {
   )
 
   const selectedSub = openSubSeasons.find((s) => s.id === subSeasonId)
+  const today = new Date().toISOString().split('T')[0]!
+  const dateMin = selectedSub?.start_date
+  const dateMax = selectedSub
+    ? selectedSub.end_date < today
+      ? selectedSub.end_date
+      : today
+    : today
+  const effectiveDate =
+    dateMin && dateMax ? clampDateToRange(date, dateMin, dateMax) : date
+  const dateInWindow =
+    selectedSub != null && isPlayedAtInSubSeasonWindow(effectiveDate, selectedSub)
+
   const netScore =
     gross && courseHandicap !== '' ? Number(gross) - Number(courseHandicap) : null
   const courseSuggestions = KNOWN_COURSES.filter(
@@ -93,7 +106,8 @@ export function StrokeplayForm({ onClose, onBack }: Props) {
     courseHandicap !== '' &&
     !!subSeasonId &&
     !!courseName &&
-    presentOk
+    presentOk &&
+    dateInWindow
 
   const togglePresent = (id: string) => {
     if (!profile || id === profile.id) return
@@ -111,7 +125,7 @@ export function StrokeplayForm({ onClose, onBack }: Props) {
       player_id: profile.id,
       sub_season_id: subSeasonId,
       course_name: courseName,
-      played_at: date,
+      played_at: effectiveDate,
       course_handicap: Number(courseHandicap),
       gross_score: Number(gross),
       present_player_ids: [...presentIds],
@@ -275,15 +289,24 @@ export function StrokeplayForm({ onClose, onBack }: Props) {
             <Label htmlFor="strokeplay-date" className="text-sm font-semibold">
               Date played
             </Label>
-            <p className="mt-0.5 text-xs text-muted-foreground">When you finished the round.</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              Must fall within this scoring period
+              {selectedSub ? ` (${selectedSub.start_date} → ${selectedSub.end_date})` : ''}.
+            </p>
             <Input
               id="strokeplay-date"
               type="date"
-              value={date}
-              max={new Date().toISOString().split('T')[0]}
+              value={effectiveDate}
+              min={dateMin}
+              max={dateMax}
               onChange={(e) => setDate(e.target.value)}
               className={fieldClass}
             />
+            {selectedSub && !dateInWindow && (
+              <p className="mt-2 text-xs text-destructive">
+                Pick a date between {selectedSub.start_date} and {dateMax}.
+              </p>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-3">
@@ -406,7 +429,7 @@ export function StrokeplayForm({ onClose, onBack }: Props) {
             </div>
             <div className="flex justify-between gap-2 border-b border-border pb-2">
               <span className="text-muted-foreground">Date</span>
-              <span className="text-right font-semibold">{date}</span>
+              <span className="text-right font-semibold">{effectiveDate}</span>
             </div>
             <div className="flex justify-between gap-2 border-b border-border pb-2">
               <span className="text-muted-foreground">Gross / HCP</span>

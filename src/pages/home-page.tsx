@@ -209,7 +209,7 @@ export function HomePage() {
 
       <div className="mx-4 my-4 h-px" style={{ backgroundColor: 'oklch(0.90 0.01 157)' }} />
 
-      <ActivityFeed />
+      <ActivityFeed showPlayedDate={tab === 'bonus'} />
     </div>
   )
 }

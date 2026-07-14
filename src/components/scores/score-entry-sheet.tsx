@@ -4,10 +4,11 @@ import { useUIStore } from '@/stores/ui-store'
 import { MatchplayForm } from './matchplay-form'
 import { StrokeplayForm } from './strokeplay-form'
 import { WagerEntryFlow } from './wager-entry-flow'
+import { GrudgeEntryFlow } from './grudge-entry-flow'
 import { OpenWagersSection } from './open-wagers-section'
-import { Swords, Flag, DollarSign } from 'lucide-react'
+import { Swords, Flag, DollarSign, Flame } from 'lucide-react'
 
-type ScoreType = null | 'matchplay' | 'strokeplay' | 'wager'
+type ScoreType = null | 'matchplay' | 'strokeplay' | 'wager' | 'grudge'
 
 export function ScoreEntrySheet() {
   const open = useUIStore((s) => s.scoreSheetOpen)
@@ -48,6 +49,13 @@ export function ScoreEntrySheet() {
                     onClick={() => setScoreType('strokeplay')}
                   />
                   <ScoreTypeCard
+                    icon={<Flame className="h-6 w-6" />}
+                    title="Grudge Match"
+                    description="Challenge someone outside your group"
+                    color="oklch(0.55 0.14 25)"
+                    onClick={() => setScoreType('grudge')}
+                  />
+                  <ScoreTypeCard
                     icon={<DollarSign className="h-6 w-6" />}
                     title="Wager Match"
                     description="Open wagers, new challenges, and 2v2"
@@ -63,6 +71,8 @@ export function ScoreEntrySheet() {
           <MatchplayForm onClose={handleClose} onBack={() => setScoreType(null)} />
         ) : scoreType === 'strokeplay' ? (
           <StrokeplayForm onClose={handleClose} onBack={() => setScoreType(null)} />
+        ) : scoreType === 'grudge' ? (
+          <GrudgeEntryFlow onClose={handleClose} onBack={() => setScoreType(null)} />
         ) : (
           <WagerEntryFlow onClose={handleClose} onBack={() => setScoreType(null)} />
         )}

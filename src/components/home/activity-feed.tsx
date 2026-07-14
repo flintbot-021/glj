@@ -5,7 +5,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 
-export function ActivityFeed() {
+export function ActivityFeed({ showPlayedDate = false }: { showPlayedDate?: boolean }) {
   const [page, setPage] = useState(0)
   const [allItems, setAllItems] = useState<ReturnType<typeof useActivityFeed>['data']>()
   const { data, isLoading } = useActivityFeed(page)
@@ -72,9 +72,11 @@ export function ActivityFeed() {
               actor={item.actor}
               secondary_actor={item.secondary_actor}
               played_with={item.played_with}
+              played_at={item.played_at}
               description={item.description}
               metadata={item.metadata}
               created_at={item.created_at}
+              showPlayedDate={showPlayedDate}
             />
           ))}
         </div>

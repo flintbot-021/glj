@@ -17,6 +17,21 @@ export const STROKE_BONUS_POINTS = {
   third: 0.5,
 } as const
 
+/** Season-wide grudge matches (outside your group). */
+export const GRUDGE_MATCH_POINTS = {
+  challengerWin: 3,
+  challengedWin: 1,
+  draw: 1,
+} as const
+
+export const GRUDGE_MATCH_LIMITS = {
+  maxIssued: 1,
+  maxReceived: 3,
+} as const
+
+export const GRUDGE_MATCH_COPY =
+  'Challenge one player outside your group — the match opens immediately. Either of you records the result; the other confirms once. You may issue 1 challenge and receive up to 3. Win as challenger: +3. Win as challenged: +1. Halve: +1 each. Points count on the group table.'
+
 /** RTD 2026 bonus “legs” / schedule (stroke play ladder). Names and windows from season brief. */
 export const BONUS_SUB_SEASON_SCHEDULE_2026 = [
   {

@@ -64,7 +64,6 @@ export function OpenWagersSection({ onNavigateAway, children }: Props) {
           const openRecord = w.status === 'active'
           const subtitleNeedConfirm =
             profile?.id && needsOutcomeConfirmation(w, profile.id) ? ' · Confirm on Wagers' : ''
-          const subtitlePending = w.status === 'pending_acceptance' ? ' · Accept on Wagers' : ''
           return (
             <button
               key={w.id}
@@ -81,7 +80,6 @@ export function OpenWagersSection({ onNavigateAway, children }: Props) {
                 <p className="text-xs text-muted-foreground">
                   {formatWalletBalance(w.amount)} · {WAGER_STATUS_LABELS[w.status]}
                   {subtitleNeedConfirm}
-                  {subtitlePending}
                 </p>
               </div>
               <Badge variant="outline" className="shrink-0 text-[10px]">

@@ -94,7 +94,8 @@ export function computeGroupStandings(
   matchPointsConfig: { winPoints: number; drawPoints: number } = {
     winPoints: MATCH_PLAY_POINTS.win,
     drawPoints: MATCH_PLAY_POINTS.draw,
-  }
+  },
+  grudgePoints: Record<string, number> = {}
 ) {
   const { winPoints, drawPoints } = matchPointsConfig
   return players
@@ -120,7 +121,8 @@ export function computeGroupStandings(
 
       const matchPoints = wins * winPoints + draws * drawPoints
       const bonus = bonusPoints[player.id] ?? 0
-      const total = matchPoints + bonus
+      const grudge = grudgePoints[player.id] ?? 0
+      const total = matchPoints + bonus + grudge
 
       return {
         player,
@@ -130,6 +132,7 @@ export function computeGroupStandings(
         played: playerResults.length,
         points: matchPoints,
         bonus_points: bonus,
+        grudge_points: grudge,
         total_points: total,
       }
     })
@@ -139,14 +142,19 @@ export function computeGroupStandings(
 
 export function computeBonusLeague(
   rounds: import('./types').StrokeplayRound[],
-  subSeasonId: string
+  subSeason: Pick<import('./types').SubSeason, 'id' | 'start_date' | 'end_date'>
 ): Map<string, { best: number; second: number; rounds: import('./types').StrokeplayRound[] }> {
   const playerRounds = new Map<
     string,
     { best: number; second: number; rounds: import('./types').StrokeplayRound[] }
   >()
 
-  const filtered = rounds.filter((r) => r.sub_season_id === subSeasonId)
+  const filtered = rounds.filter(
+    (r) =>
+      r.sub_season_id === subSeason.id &&
+      r.played_at >= subSeason.start_date &&
+      r.played_at <= subSeason.end_date
+  )
 
   filtered.forEach((round) => {
     const existing = playerRounds.get(round.player_id) ?? {

@@ -39,11 +39,16 @@ export type BonusLegRankRow = {
 export function rankPlayersForBonusLeg(
   players: Profile[],
   rounds: StrokeplayRound[],
-  subSeasonId: string
+  subSeason: Pick<SubSeason, 'id' | 'start_date' | 'end_date'>
 ): BonusLegRankRow[] {
+  const counting = rounds.filter(
+    (r) =>
+      r.sub_season_id === subSeason.id &&
+      r.played_at >= subSeason.start_date &&
+      r.played_at <= subSeason.end_date
+  )
   const byPlayer = new Map<string, StrokeplayRound[]>()
-  for (const r of rounds) {
-    if (r.sub_season_id !== subSeasonId) continue
+  for (const r of counting) {
     const list = byPlayer.get(r.player_id) ?? []
     list.push(r)
     byPlayer.set(r.player_id, list)
@@ -66,4 +71,147 @@ export function rankPlayersForBonusLeg(
     return a.best_net - b.best_net
   })
   return rows
+}
+
+/** Eligible players grouped by equal combined net (consecutive after ranking). */
+export function groupEligibleByCombinedNet(ranked: BonusLegRankRow[]): BonusLegRankRow[][] {
+  const eligible = ranked.filter((r) => r.combined_net < Number.POSITIVE_INFINITY)
+  const groups: BonusLegRankRow[][] = []
+  for (const row of eligible) {
+    const last = groups[groups.length - 1]
+    if (last && last[0]!.combined_net === row.combined_net) {
+      last.push(row)
+    } else {
+      groups.push([row])
+    }
+  }
+  return groups
+}
+
+export type BonusPodiumPosition = 1 | 2 | 3
+
+export type BonusPodiumAward = {
+  player_id: string
+  position: BonusPodiumPosition
+  points_awarded: number
+  player: Profile
+  best_net: number
+  second_net: number
+  combined_net: number
+}
+
+/** A group of players tied on combined net that must spin for contested podium places. */
+export type BonusTieContest = {
+  id: string
+  /** First contested podium place (1–3). */
+  startPosition: BonusPodiumPosition
+  /** Podium places at stake, in ascending order. */
+  positions: BonusPodiumPosition[]
+  players: BonusLegRankRow[]
+  combined_net: number
+}
+
+export type BonusPodiumPlan = {
+  /** Awards that do not need a spin (clear places, or already resolved). */
+  awards: BonusPodiumAward[]
+  /** Tie groups that still need a wheel spin. */
+  unresolvedContests: BonusTieContest[]
+  /** All tie contests for this podium (resolved + unresolved). */
+  contests: BonusTieContest[]
+}
+
+function awardFromRow(
+  row: BonusLegRankRow,
+  position: BonusPodiumPosition,
+  bonusPts: [number, number, number]
+): BonusPodiumAward {
+  return {
+    player_id: row.player.id,
+    position,
+    points_awarded: bonusPts[position - 1]!,
+    player: row.player,
+    best_net: row.best_net,
+    second_net: row.second_net,
+    combined_net: row.combined_net,
+  }
+}
+
+function contestId(startPosition: BonusPodiumPosition, playerIds: string[]): string {
+  return `tie-p${startPosition}-${playerIds.slice().sort().join('_')}`
+}
+
+/**
+ * Map a spun player order onto a contest’s positions.
+ * Extra players beyond the contested slots receive no award.
+ */
+export function applyTieOrder(
+  contest: BonusTieContest,
+  orderedPlayerIds: string[],
+  bonusPts: [number, number, number]
+): BonusPodiumAward[] {
+  const byId = new Map(contest.players.map((r) => [r.player.id, r]))
+  const awards: BonusPodiumAward[] = []
+  for (let i = 0; i < contest.positions.length; i++) {
+    const playerId = orderedPlayerIds[i]
+    if (!playerId) break
+    const row = byId.get(playerId)
+    if (!row) continue
+    awards.push(awardFromRow(row, contest.positions[i]!, bonusPts))
+  }
+  return awards
+}
+
+/**
+ * Build podium awards for closing a bonus leg.
+ * Ties on equal combined net overlapping places 1–3 become spin contests.
+ * Pass `resolutions[contestId] = orderedPlayerIds` after each wheel resolves.
+ */
+export function buildPodiumPlan(
+  ranked: BonusLegRankRow[],
+  bonusPts: [number, number, number],
+  resolutions: Record<string, string[]> = {}
+): BonusPodiumPlan {
+  const groups = groupEligibleByCombinedNet(ranked)
+  const awards: BonusPodiumAward[] = []
+  const contests: BonusTieContest[] = []
+  const unresolvedContests: BonusTieContest[] = []
+  let nextPosition = 1 as number
+
+  for (const group of groups) {
+    if (nextPosition > 3) break
+
+    const slotsLeft = 4 - nextPosition
+    if (group.length === 1) {
+      const row = group[0]!
+      awards.push(awardFromRow(row, nextPosition as BonusPodiumPosition, bonusPts))
+      nextPosition += 1
+      continue
+    }
+
+    const placeCount = Math.min(group.length, slotsLeft)
+    const positions = Array.from(
+      { length: placeCount },
+      (_, i) => (nextPosition + i) as BonusPodiumPosition
+    )
+    const id = contestId(positions[0]!, group.map((r) => r.player.id))
+    const contest: BonusTieContest = {
+      id,
+      startPosition: positions[0]!,
+      positions,
+      players: group,
+      combined_net: group[0]!.combined_net,
+    }
+    contests.push(contest)
+
+    const ordered = resolutions[id]
+    if (ordered && ordered.length > 0) {
+      awards.push(...applyTieOrder(contest, ordered, bonusPts))
+    } else {
+      unresolvedContests.push(contest)
+    }
+    nextPosition += placeCount
+  }
+
+  awards.sort((a, b) => a.position - b.position)
+  return { awards, contests, unresolvedContests }
 }

@@ -54,6 +54,11 @@ import {
   confirmTeamWagerOutcome,
   disputeTeamWagerOutcome,
   reopenDisputedTeamWager,
+  fetchGrudgeMatchesForSeason,
+  createGrudgeMatch,
+  cancelGrudgeMatch,
+  submitGrudgeMatchResult,
+  confirmGrudgeMatchResult,
   upsertTourHoleScore,
   markNotificationRead,
   closeBonusLegAndAssign,
@@ -94,9 +99,11 @@ import type {
   ActivityFeedItem,
   BonusLeagueEntry,
   EnrichedFeedItem,
+  EnrichedGrudgeMatch,
   EnrichedMatchplayResult,
   EnrichedTeamWager,
   EnrichedWager,
+  GrudgeMatch,
   Profile,
   StrokeplayRound,
   TeamWager,
@@ -157,6 +164,25 @@ function strokeplayPartnerProfileIds(
     if (found) return found.present_player_ids.filter((id) => id !== item.actor_id)
   }
   return []
+}
+
+function strokeplayPlayedAt(
+  item: ActivityFeedItem,
+  roundsById: Map<string, StrokeplayRound>,
+  legacyRounds: StrokeplayRound[] | undefined,
+): string | undefined {
+  const metaPlayed = item.metadata?.played_at
+  if (typeof metaPlayed === 'string' && metaPlayed.length >= 10) return metaPlayed.slice(0, 10)
+  const rid = item.metadata?.strokeplay_round_id
+  if (typeof rid === 'string' && rid.length > 0) {
+    const r = roundsById.get(rid)
+    if (r?.played_at) return r.played_at.slice(0, 10)
+  }
+  if (legacyRounds?.length) {
+    const found = matchLegacyStrokeplayRound(item, legacyRounds)
+    if (found?.played_at) return found.played_at.slice(0, 10)
+  }
+  return undefined
 }
 
 // ─── Season context ────────────────────────────────────────────────────────────
@@ -290,8 +316,8 @@ export function useBonusPointAwards() {
 }
 
 /**
- * @param viewingSubSeasonId When set, ladder columns (R1/R2/total) use this leg’s rounds.
- *   When omitted, uses the active open ladder leg. Bonus column always sums awards for the whole season.
+ * @param viewingSubSeasonId When set, ladder + bonus use this leg (snapshot).
+ *   When omitted, uses the active open ladder leg.
  */
 export function useBonusLeague(viewingSubSeasonId?: string | null) {
   const { data: season } = useActiveSeason()
@@ -304,18 +330,29 @@ export function useBonusLeague(viewingSubSeasonId?: string | null) {
         viewingSubSeasonId !== undefined && viewingSubSeasonId !== null
           ? viewingSubSeasonId
           : getLadderSubSeasonId(subs)
+      const leg = legId ? subs.find((s) => s.id === legId) : undefined
       const ssIds = subs.map((s) => s.id)
       const allRounds = await fetchStrokeplayForSubSeasons(ssIds)
-      const bonusAwards = await fetchBonusAwardsForSubSeasons(ssIds)
+      // Snapshot: only awards for the leg being viewed, not season-to-date.
+      const bonusAwards = legId
+        ? await fetchBonusAwardsForSubSeasons([legId])
+        : []
       const bonusMap: Record<string, number> = {}
       bonusAwards.forEach((a) => {
         bonusMap[a.player_id] = (bonusMap[a.player_id] ?? 0) + a.points_awarded
       })
 
       const rows: Omit<BonusLeagueEntry, 'rank'>[] = players.map((player) => {
-        const rounds = legId
-          ? allRounds.filter((r) => r.player_id === player.id && r.sub_season_id === legId)
-          : []
+        const rounds =
+          leg != null
+            ? allRounds.filter(
+                (r) =>
+                  r.player_id === player.id &&
+                  r.sub_season_id === leg.id &&
+                  r.played_at >= leg.start_date &&
+                  r.played_at <= leg.end_date
+              )
+            : []
         const { r1, r2 } = getBestTwoRounds(rounds)
         const total_net = ladderTotals(r1, r2)
         return {
@@ -533,6 +570,83 @@ export function useWagers(playerId?: string, statusFilter?: WagerStatus[]) {
   })
 }
 
+async function enrichGrudgeMatches(rows: GrudgeMatch[]): Promise<EnrichedGrudgeMatch[]> {
+  const ids = new Set<string>()
+  rows.forEach((g) => {
+    ids.add(g.challenger_id)
+    ids.add(g.challenged_id)
+  })
+  const map = await fetchProfileMap([...ids])
+  return rows.map((g) => ({
+    ...g,
+    challenger: map.get(g.challenger_id)!,
+    challenged: map.get(g.challenged_id)!,
+  }))
+}
+
+export function useGrudgeMatches() {
+  const { data: season } = useActiveSeason()
+  return useQuery({
+    queryKey: ['grudge-matches', season?.id],
+    queryFn: async () => {
+      const rows = await fetchGrudgeMatchesForSeason(season!.id)
+      return enrichGrudgeMatches(rows)
+    },
+    enabled: !!season?.id,
+  })
+}
+
+export function useCreateGrudgeMatch() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (challengedId: string) => createGrudgeMatch(challengedId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['grudge-matches'] })
+      qc.invalidateQueries({ queryKey: ['notifications'] })
+      qc.invalidateQueries({ queryKey: ['unread-count'] })
+    },
+  })
+}
+
+export function useCancelGrudgeMatch() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (grudgeId: string) => cancelGrudgeMatch(grudgeId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['grudge-matches'] })
+      qc.invalidateQueries({ queryKey: ['notifications'] })
+      qc.invalidateQueries({ queryKey: ['unread-count'] })
+    },
+  })
+}
+
+export function useSubmitGrudgeMatchResult() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: submitGrudgeMatchResult,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['grudge-matches'] })
+      qc.invalidateQueries({ queryKey: ['notifications'] })
+      qc.invalidateQueries({ queryKey: ['unread-count'] })
+    },
+  })
+}
+
+export function useConfirmGrudgeMatchResult() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (grudgeId: string) => confirmGrudgeMatchResult(grudgeId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['grudge-matches'] })
+      qc.invalidateQueries({ queryKey: ['group-standings'] })
+      qc.invalidateQueries({ queryKey: ['all-group-standings'] })
+      qc.invalidateQueries({ queryKey: ['activity-feed'] })
+      qc.invalidateQueries({ queryKey: ['notifications'] })
+      qc.invalidateQueries({ queryKey: ['unread-count'] })
+    },
+  })
+}
+
 async function enrichTeamWagers(rows: TeamWager[]): Promise<EnrichedTeamWager[]> {
   const ids = new Set<string>()
   rows.forEach((w) => {
@@ -735,6 +849,7 @@ export function useActivityFeed(page = 0) {
       const map = await fetchProfileMap([...ids])
       const enriched: EnrichedFeedItem[] = items.map((item) => {
         let played_with: Profile[] | undefined
+        let played_at: string | undefined
         if (item.type === 'strokeplay') {
           const pids = strokeplayPartnerProfileIds(item, roundsById, legacyStrokeRounds)
           if (pids.length > 0) {
@@ -747,12 +862,14 @@ export function useActivityFeed(page = 0) {
                 }),
               )
           }
+          played_at = strokeplayPlayedAt(item, roundsById, legacyStrokeRounds)
         }
         return {
           ...item,
           actor: map.get(item.actor_id)!,
           secondary_actor: item.secondary_actor_id ? map.get(item.secondary_actor_id) : undefined,
           played_with,
+          played_at,
         }
       })
       return { items: enriched, hasMore, total }
@@ -1402,6 +1519,7 @@ export function useSubmitStrokeplay() {
             gross_score: data.gross_score,
             course_handicap: data.course_handicap,
             course: data.course_name,
+            played_at: data.played_at,
             played_with_ids,
           },
         })

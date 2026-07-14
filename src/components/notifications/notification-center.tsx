@@ -4,7 +4,7 @@ import { useUIStore } from '@/stores/ui-store'
 import { useAuthStore } from '@/stores/auth-store'
 import { useNotifications, useMarkNotificationRead } from '@/hooks/use-data'
 import { formatRelativeTime } from '@/lib/format'
-import { Bell, Trophy, DollarSign, Flag, Star } from 'lucide-react'
+import { Bell, Trophy, DollarSign, Flag, Star, Flame } from 'lucide-react'
 import type { NotificationType } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
@@ -19,6 +19,10 @@ const NOTIF_ICONS: Record<NotificationType, React.ReactNode> = {
   sub_season_closed: <Star className="h-4 w-4" />,
   bracket_set: <Trophy className="h-4 w-4" />,
   tour_update: <Flag className="h-4 w-4" />,
+  grudge_request: <Flame className="h-4 w-4" />,
+  grudge_accepted: <Flame className="h-4 w-4" />,
+  grudge_declined: <Flame className="h-4 w-4" />,
+  grudge_result: <Flame className="h-4 w-4" />,
 }
 
 const NOTIF_ROUTES: Record<NotificationType, string> = {
@@ -32,6 +36,10 @@ const NOTIF_ROUTES: Record<NotificationType, string> = {
   sub_season_closed: '/',
   bracket_set: '/bracket',
   tour_update: '/tour',
+  grudge_request: '/',
+  grudge_accepted: '/',
+  grudge_declined: '/',
+  grudge_result: '/',
 }
 
 const NOTIF_COLORS: Record<NotificationType, string> = {
@@ -45,6 +53,10 @@ const NOTIF_COLORS: Record<NotificationType, string> = {
   sub_season_closed: 'oklch(0.80 0.14 72)',
   bracket_set: 'oklch(0.60 0.18 330)',
   tour_update: 'oklch(0.42 0.15 260)',
+  grudge_request: 'oklch(0.55 0.14 25)',
+  grudge_accepted: 'oklch(0.52 0.17 145)',
+  grudge_declined: 'oklch(0.55 0.22 25)',
+  grudge_result: 'oklch(0.55 0.14 25)',
 }
 
 export function NotificationCenter() {
@@ -83,6 +95,14 @@ export function NotificationCenter() {
                   onClick={() => {
                     if (!profile) return
                     markRead.mutate({ notificationId: notif.id, playerId: profile.id })
+                    if (
+                      notif.type === 'grudge_request' ||
+                      notif.type === 'grudge_accepted' ||
+                      notif.type === 'grudge_declined' ||
+                      notif.type === 'grudge_result'
+                    ) {
+                      useUIStore.getState().openScoreSheet()
+                    }
                     navigate(NOTIF_ROUTES[notif.type])
                     close()
                   }}

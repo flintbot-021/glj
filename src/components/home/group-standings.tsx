@@ -12,7 +12,7 @@ export function GroupStandings() {
   const handleScroll = () => {
     if (!scrollRef.current) return
     const { scrollLeft, offsetWidth } = scrollRef.current
-    const index = Math.round(scrollLeft / (offsetWidth * 0.85))
+    const index = Math.round(scrollLeft / (offsetWidth * 0.9))
     setActiveIndex(Math.min(index, (allGroups?.length ?? 1) - 1))
   }
 
@@ -23,7 +23,7 @@ export function GroupStandings() {
           <div
             key={i}
             className="flex-shrink-0 rounded-xl overflow-hidden animate-pulse"
-            style={{ width: 'calc(85vw)', maxWidth: 320, backgroundColor: 'oklch(0.22 0.068 157)' }}
+            style={{ width: 'calc(90vw)', maxWidth: 380, backgroundColor: 'oklch(0.22 0.068 157)' }}
           >
             {/* Header */}
             <div className="px-4 py-3 flex items-center justify-between" style={{ borderBottom: '1px solid oklch(0.30 0.068 157)' }}>
@@ -68,8 +68,8 @@ export function GroupStandings() {
             key={group.id}
             className="flex-shrink-0 snap-start rounded-xl overflow-hidden"
             style={{
-              width: 'calc(85vw)',
-              maxWidth: 320,
+              width: 'calc(90vw)',
+              maxWidth: 380,
               backgroundColor: 'oklch(0.22 0.068 157)',
             }}
           >
@@ -87,11 +87,13 @@ export function GroupStandings() {
             </div>
 
             {/* Column headers */}
-            <div className="flex items-center px-4 py-2">
+            <div className="flex items-center px-3 py-2">
               <div className="flex-1" />
-              <div className="flex gap-4 text-[10px] font-semibold uppercase tracking-wider text-white/40 w-28 justify-end">
-                <span className="w-12 text-center">W-L-D</span>
-                <span className="w-8 text-right">Pts</span>
+              <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wider text-white/40">
+                <span className="w-11 text-center">W-L-D</span>
+                <span className="w-6 text-right">MP</span>
+                <span className="w-6 text-right">BP</span>
+                <span className="w-7 text-right">Pts</span>
               </div>
             </div>
 
@@ -101,21 +103,27 @@ export function GroupStandings() {
                 <div
                   key={s.player.id}
                   className={cn(
-                    'flex items-center px-4 py-2.5 gap-3',
+                    'flex items-center px-3 py-2.5 gap-2',
                     idx === 0 && 'bg-white/5'
                   )}
                 >
-                  <span className="text-xs font-bold text-white/40 w-4">{idx + 1}</span>
+                  <span className="text-xs font-bold text-white/40 w-4 shrink-0">{idx + 1}</span>
                   <PlayerAvatar player={s.player} size="sm" />
                   <span className="flex-1 min-w-0 text-sm font-semibold text-white truncate">
                     {profileDisplayName(s.player)}
                   </span>
-                  <div className="flex gap-4 items-center w-28 justify-end">
-                    <span className="text-xs text-white/60 w-12 text-center">
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="text-xs text-white/60 w-11 text-center tabular-nums">
                       {s.wins}-{s.losses}-{s.draws}
                     </span>
+                    <span className="text-xs text-white/70 w-6 text-right tabular-nums">
+                      {formatPoints(s.points)}
+                    </span>
+                    <span className="text-xs text-white/70 w-6 text-right tabular-nums">
+                      {s.bonus_points > 0 ? formatPoints(s.bonus_points) : '—'}
+                    </span>
                     <span
-                      className="text-sm font-black w-8 text-right"
+                      className="text-sm font-black w-7 text-right tabular-nums"
                       style={{ color: 'oklch(0.80 0.14 72)' }}
                     >
                       {formatPoints(s.total_points)}
@@ -136,7 +144,7 @@ export function GroupStandings() {
             onClick={() => {
               const el = scrollRef.current
               if (!el) return
-              el.scrollTo({ left: i * el.offsetWidth * 0.85, behavior: 'smooth' })
+              el.scrollTo({ left: i * el.offsetWidth * 0.9, behavior: 'smooth' })
               setActiveIndex(i)
             }}
             className="h-1.5 rounded-full transition-all"

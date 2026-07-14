@@ -8,6 +8,12 @@ truncate table public.activity_feed      restart identity cascade;
 truncate table public.notifications      restart identity cascade;
 truncate table public.wallet_transactions restart identity cascade;
 truncate table public.wagers             restart identity cascade;
+-- grudge_matches is created in a later migration; only truncate when present
+do $$ begin
+  if to_regclass('public.grudge_matches') is not null then
+    execute 'truncate table public.grudge_matches restart identity cascade';
+  end if;
+end $$;
 truncate table public.bonus_point_awards restart identity cascade;
 truncate table public.strokeplay_rounds  restart identity cascade;
 truncate table public.matchplay_results  restart identity cascade;

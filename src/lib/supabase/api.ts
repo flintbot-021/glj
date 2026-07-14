@@ -22,6 +22,7 @@ import {
   mapSeason,
   mapGroup,
   mapMatchplayResult,
+  mapGrudgeMatch,
   mapSubSeason,
   mapStrokeplayRound,
   mapBonusAward,
@@ -208,11 +209,12 @@ export async function buildGroupStandings(
   groupId: string,
   seasonId: string
 ): Promise<GroupStanding[]> {
-  const [players, results, subSeasons, seasonRow] = await Promise.all([
+  const [players, results, subSeasons, seasonRow, grudgeMap] = await Promise.all([
     fetchPlayersInGroup(groupId),
     fetchMatchplayForGroup(groupId, seasonId),
     fetchSubSeasonsForSeason(seasonId),
     fetchSeasonById(seasonId),
+    fetchGrudgePointsMap(seasonId),
   ])
   const ssIds = subSeasons.map((s) => s.id)
   const bonusAwards = await fetchBonusAwardsForSubSeasons(ssIds)
@@ -221,17 +223,18 @@ export async function buildGroupStandings(
     bonusMap[a.player_id] = (bonusMap[a.player_id] ?? 0) + a.points_awarded
   })
   const mp = matchPointsFromSeason(seasonRow)
-  return computeGroupStandings(players, results, bonusMap, mp).map((s) => ({
+  return computeGroupStandings(players, results, bonusMap, mp, grudgeMap).map((s) => ({
     ...s,
     group_id: groupId,
   }))
 }
 
 export async function buildAllGroupStandings(seasonId: string) {
-  const [groups, subSeasons, seasonRow] = await Promise.all([
+  const [groups, subSeasons, seasonRow, grudgeMap] = await Promise.all([
     fetchGroupsForSeason(seasonId),
     fetchSubSeasonsForSeason(seasonId),
     fetchSeasonById(seasonId),
+    fetchGrudgePointsMap(seasonId),
   ])
   const ssIds = subSeasons.map((s) => s.id)
   const bonusAwards = await fetchBonusAwardsForSubSeasons(ssIds)
@@ -247,7 +250,7 @@ export async function buildAllGroupStandings(seasonId: string) {
     const results = await fetchMatchplayForGroup(group.id, seasonId)
     out.push({
       group,
-      standings: computeGroupStandings(players, results, bonusMap, mp).map((s) => ({
+      standings: computeGroupStandings(players, results, bonusMap, mp, grudgeMap).map((s) => ({
         ...s,
         group_id: group.id,
       })),
@@ -484,6 +487,81 @@ export async function insertMatchplay(data: {
   return mapMatchplayResult(throwOnErr('insertMatchplay', res) as unknown as Record<string, unknown>)
 }
 
+export async function fetchGrudgeMatchesForSeason(seasonId: string) {
+  const res = await supabase
+    .from('grudge_matches')
+    .select('*')
+    .eq('season_id', seasonId)
+    .order('created_at', { ascending: false })
+  if (res.error) throw new Error(res.error.message)
+  return (res.data as Record<string, unknown>[]).map(mapGrudgeMatch)
+}
+
+/** Settled grudge points per player for the season. */
+export async function fetchGrudgePointsMap(seasonId: string): Promise<Record<string, number>> {
+  const res = await supabase
+    .from('grudge_matches')
+    .select('challenger_id, challenged_id, points_challenger, points_challenged, status')
+    .eq('season_id', seasonId)
+    .eq('status', 'settled')
+  if (res.error) throw new Error(res.error.message)
+  const map: Record<string, number> = {}
+  for (const row of res.data as Record<string, unknown>[]) {
+    const c = String(row.challenger_id)
+    const d = String(row.challenged_id)
+    map[c] = (map[c] ?? 0) + numOrZero(row.points_challenger)
+    map[d] = (map[d] ?? 0) + numOrZero(row.points_challenged)
+  }
+  return map
+}
+
+function numOrZero(v: unknown): number {
+  if (v == null) return 0
+  const n = typeof v === 'number' ? v : Number(v)
+  return Number.isFinite(n) ? n : 0
+}
+
+export async function createGrudgeMatch(challengedId: string) {
+  const res = await supabase.rpc('create_grudge_match', { p_challenged_id: challengedId })
+  if (res.error) throw new Error(res.error.message)
+  const row = firstRpcRow(res.data)
+  if (!row) throw new Error('create_grudge_match returned no row')
+  return mapGrudgeMatch(row)
+}
+
+export async function cancelGrudgeMatch(grudgeId: string) {
+  const res = await supabase.rpc('cancel_grudge_match', { p_grudge_id: grudgeId })
+  if (res.error) throw new Error(res.error.message)
+}
+
+export async function submitGrudgeMatchResult(data: {
+  grudgeId: string
+  result: 'win_challenger' | 'win_challenged' | 'draw'
+  margin: string
+  course: string
+  playedAt: string
+}) {
+  const res = await supabase.rpc('submit_grudge_match_result', {
+    p_grudge_id: data.grudgeId,
+    p_result: data.result,
+    p_margin: data.margin,
+    p_course: data.course,
+    p_played_at: data.playedAt,
+  })
+  if (res.error) throw new Error(res.error.message)
+  const row = firstRpcRow(res.data)
+  if (!row) throw new Error('submit_grudge_match_result returned no row')
+  return mapGrudgeMatch(row)
+}
+
+export async function confirmGrudgeMatchResult(grudgeId: string) {
+  const res = await supabase.rpc('confirm_grudge_match_result', { p_grudge_id: grudgeId })
+  if (res.error) throw new Error(res.error.message)
+  const row = firstRpcRow(res.data)
+  if (!row) throw new Error('confirm_grudge_match_result returned no row')
+  return mapGrudgeMatch(row)
+}
+
 export async function insertActivityFeed(data: Omit<ActivityFeedItem, 'id' | 'created_at'>) {
   const res = await supabase
     .from('activity_feed')
@@ -539,7 +617,7 @@ export async function insertWager(data: {
       proposer_id: data.proposer_id,
       opponent_id: data.opponent_id,
       amount: data.amount,
-      status: 'pending_acceptance',
+      status: 'active',
     })
     .select('*')
     .single()
@@ -556,7 +634,7 @@ export async function deleteWager(wagerId: string) {
   if (res.error) throw new Error(res.error.message)
   if (!res.data) {
     throw new Error(
-      'Could not remove this wager. It may have already been accepted, or you may not have permission.',
+      'Could not remove this wager. It may already have a result, or you may not have permission.',
     )
   }
 }

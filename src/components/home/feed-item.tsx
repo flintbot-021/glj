@@ -1,6 +1,6 @@
-import { Trophy, Flag, DollarSign, Star, Swords } from 'lucide-react'
+import { Trophy, Flag, DollarSign, Star, Swords, Flame } from 'lucide-react'
 import { PlayerAvatar } from '@/components/ui/player-avatar'
-import { formatRelativeTime, profileDisplayName } from '@/lib/format'
+import { formatDate, formatRelativeTime, profileDisplayName } from '@/lib/format'
 import type { FeedItemType, Profile } from '@/lib/types'
 
 const GREEN = 'oklch(0.22 0.068 157)'
@@ -14,6 +14,7 @@ const FEED_ICONS: Record<FeedItemType, React.ReactNode> = {
   bonus_points: <Star className="h-4 w-4" />,
   knockout:     <Trophy className="h-4 w-4" />,
   tour_score:   <Flag className="h-4 w-4" />,
+  grudge_match: <Flame className="h-4 w-4" />,
 }
 
 const FEED_COLORS: Record<FeedItemType, string> = {
@@ -23,6 +24,7 @@ const FEED_COLORS: Record<FeedItemType, string> = {
   bonus_points: GOLD,
   knockout:     'oklch(0.60 0.18 330)',
   tour_score:   'oklch(0.42 0.15 260)',
+  grudge_match: 'oklch(0.55 0.14 25)',
 }
 
 // ── Data parsers ────────────────────────────────────────────────────────────
@@ -151,9 +153,13 @@ interface FeedItemProps {
   secondary_actor?: Profile
   /** Strokeplay: profiles for `metadata.played_with_ids` (enriched in `useActivityFeed`). */
   played_with?: Profile[]
+  /** Strokeplay: YYYY-MM-DD when the round was played. */
+  played_at?: string
   description: string
   metadata: Record<string, unknown>
   created_at: string
+  /** When true (Bonus tab), strokeplay cards show the played date instead of relative submit time. */
+  showPlayedDate?: boolean
 }
 
 export function FeedItem({
@@ -161,11 +167,16 @@ export function FeedItem({
   actor,
   secondary_actor,
   played_with,
+  played_at,
   description,
   metadata,
   created_at,
+  showPlayedDate = false,
 }: FeedItemProps) {
-  const time = formatRelativeTime(created_at)
+  const time =
+    showPlayedDate && type === 'strokeplay' && played_at
+      ? formatDate(played_at, 'd MMM yyyy')
+      : formatRelativeTime(created_at)
 
   // ── Strokeplay ──────────────────────────────────────────────────────────
   if (type === 'strokeplay') {
