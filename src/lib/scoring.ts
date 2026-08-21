@@ -95,9 +95,13 @@ export function computeGroupStandings(
     winPoints: MATCH_PLAY_POINTS.win,
     drawPoints: MATCH_PLAY_POINTS.draw,
   },
-  grudgePoints: Record<string, number> = {}
+  grudgePoints: Record<string, number> = {},
+  /** Defaults to `players.length` when omitted. */
+  groupSize: number = players.length
 ) {
   const { winPoints, drawPoints } = matchPointsConfig
+  const fixturesRequired = Math.max(0, groupSize - 1)
+
   return players
     .map((player) => {
       const playerResults = results.filter(
@@ -119,20 +123,27 @@ export function computeGroupStandings(
         }
       })
 
+      const played = playerResults.length
+      const fixturesComplete = played >= fixturesRequired
       const matchPoints = wins * winPoints + draws * drawPoints
       const bonus = bonusPoints[player.id] ?? 0
-      const grudge = grudgePoints[player.id] ?? 0
-      const total = matchPoints + bonus + grudge
+      const grudgeBanked = grudgePoints[player.id] ?? 0
+      const grudgeApplied = fixturesComplete ? grudgeBanked : 0
+      const grudgePending = grudgeBanked > 0 && !fixturesComplete
+      const total = matchPoints + bonus + grudgeApplied
 
       return {
         player,
         wins,
         losses,
         draws,
-        played: playerResults.length,
+        played,
+        fixtures_required: fixturesRequired,
         points: matchPoints,
         bonus_points: bonus,
-        grudge_points: grudge,
+        grudge_points: grudgeApplied,
+        grudge_points_banked: grudgeBanked,
+        grudge_pending: grudgePending,
         total_points: total,
       }
     })

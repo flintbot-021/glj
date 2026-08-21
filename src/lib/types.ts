@@ -49,10 +49,18 @@ export interface GroupStanding {
   losses: number
   draws: number
   played: number
+  /** Group fixtures needed to finish (group size − 1). */
+  fixtures_required: number
   points: number
   bonus_points: number
-  /** Points from settled grudge matches this season. */
+  /**
+   * Grudge points applied to standings (0 until all group fixtures are played).
+   */
   grudge_points: number
+  /** Settled grudge points for the season (may be banked until fixtures complete). */
+  grudge_points_banked: number
+  /** True when banked GP exists but fixtures are incomplete. */
+  grudge_pending: boolean
   total_points: number
   /** Set when computed via `computeGroupStandings` ordering. */
   position?: number

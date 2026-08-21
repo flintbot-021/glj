@@ -1,8 +1,44 @@
 import { useRef, useState } from 'react'
+import { Clock } from 'lucide-react'
 import { useAllGroupStandings } from '@/hooks/use-data'
 import { PlayerAvatar } from '@/components/ui/player-avatar'
 import { formatPoints, profileDisplayName } from '@/lib/format'
 import { cn } from '@/lib/utils'
+
+function GrudgePointsCell({
+  applied,
+  banked,
+  pending,
+}: {
+  applied: number
+  banked: number
+  pending: boolean
+}) {
+  if (pending) {
+    return (
+      <span
+        className="inline-flex w-7 items-center justify-end gap-0.5 text-xs tabular-nums text-amber-300/90"
+        title={`+${formatPoints(banked)} grudge banked — counts after all group games`}
+      >
+        <Clock className="h-3 w-3 shrink-0" aria-hidden />
+        <span className="sr-only">
+          {formatPoints(banked)} grudge points pending until fixtures complete
+        </span>
+        <span aria-hidden>{formatPoints(banked)}</span>
+      </span>
+    )
+  }
+
+  if (applied > 0) {
+    return (
+      <span className="w-7 text-right text-xs tabular-nums text-white/70">
+        {formatPoints(applied)}
+      </span>
+    )
+  }
+
+  return <span className="w-7 text-right text-xs text-white/40">—</span>
+}
 
 export function GroupStandings() {
   const { data: allGroups, isLoading } = useAllGroupStandings()
@@ -69,7 +105,7 @@ export function GroupStandings() {
             className="flex-shrink-0 snap-start rounded-xl overflow-hidden"
             style={{
               width: 'calc(90vw)',
-              maxWidth: 380,
+              maxWidth: 400,
               backgroundColor: 'oklch(0.22 0.068 157)',
             }}
           >
@@ -89,10 +125,12 @@ export function GroupStandings() {
             {/* Column headers */}
             <div className="flex items-center px-3 py-2">
               <div className="flex-1" />
-              <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wider text-white/40">
+              <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-white/40">
+                <span className="w-10 text-center">Pld</span>
                 <span className="w-11 text-center">W-L-D</span>
                 <span className="w-6 text-right">MP</span>
                 <span className="w-6 text-right">BP</span>
+                <span className="w-7 text-right">GP</span>
                 <span className="w-7 text-right">Pts</span>
               </div>
             </div>
@@ -112,7 +150,16 @@ export function GroupStandings() {
                   <span className="flex-1 min-w-0 text-sm font-semibold text-white truncate">
                     {profileDisplayName(s.player)}
                   </span>
-                  <div className="flex items-center gap-2 shrink-0">
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <span
+                      className={cn(
+                        'w-10 text-center text-xs tabular-nums',
+                        s.played >= s.fixtures_required ? 'text-white/70' : 'text-white/50'
+                      )}
+                      title="Group fixtures played"
+                    >
+                      {s.played}/{s.fixtures_required}
+                    </span>
                     <span className="text-xs text-white/60 w-11 text-center tabular-nums">
                       {s.wins}-{s.losses}-{s.draws}
                     </span>
@@ -122,6 +169,11 @@ export function GroupStandings() {
                     <span className="text-xs text-white/70 w-6 text-right tabular-nums">
                       {s.bonus_points > 0 ? formatPoints(s.bonus_points) : '—'}
                     </span>
+                    <GrudgePointsCell
+                      applied={s.grudge_points}
+                      banked={s.grudge_points_banked}
+                      pending={s.grudge_pending}
+                    />
                     <span
                       className="text-sm font-black w-7 text-right tabular-nums"
                       style={{ color: 'oklch(0.80 0.14 72)' }}
