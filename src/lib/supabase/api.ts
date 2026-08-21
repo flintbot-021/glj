@@ -223,10 +223,12 @@ export async function buildGroupStandings(
     bonusMap[a.player_id] = (bonusMap[a.player_id] ?? 0) + a.points_awarded
   })
   const mp = matchPointsFromSeason(seasonRow)
-  return computeGroupStandings(players, results, bonusMap, mp, grudgeMap).map((s) => ({
-    ...s,
-    group_id: groupId,
-  }))
+  return computeGroupStandings(players, results, bonusMap, mp, grudgeMap, players.length).map(
+    (s) => ({
+      ...s,
+      group_id: groupId,
+    })
+  )
 }
 
 export async function buildAllGroupStandings(seasonId: string) {
@@ -250,7 +252,14 @@ export async function buildAllGroupStandings(seasonId: string) {
     const results = await fetchMatchplayForGroup(group.id, seasonId)
     out.push({
       group,
-      standings: computeGroupStandings(players, results, bonusMap, mp, grudgeMap).map((s) => ({
+      standings: computeGroupStandings(
+        players,
+        results,
+        bonusMap,
+        mp,
+        grudgeMap,
+        players.length
+      ).map((s) => ({
         ...s,
         group_id: group.id,
       })),
