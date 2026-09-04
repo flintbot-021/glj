@@ -3,6 +3,7 @@ import { QueryProvider } from '@/providers/query-provider'
 import { AuthProvider } from '@/providers/auth-provider'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { RequireAuth } from '@/components/auth/require-auth'
+import { RequireTour } from '@/components/auth/require-tour'
 import { AppShell } from '@/components/layout/app-shell'
 import { HomePage } from '@/pages/home-page'
 import { BracketPage } from '@/pages/bracket-page'
@@ -12,8 +13,8 @@ import { ProfilePage } from '@/pages/profile-page'
 import { TourPage } from '@/pages/tour-page'
 import { TourDayPage } from '@/pages/tour-day-page'
 import { TourScoringPage } from '@/pages/tour-scoring-page'
-import { TourGreenJacketPage } from '@/pages/tour-green-jacket-page'
-import { TourChumpsPage } from '@/pages/tour-chumps-page'
+import { TourLivePage } from '@/pages/tour-live-page'
+import { TourChampsPicksPage } from '@/pages/tour-champs-picks-page'
 import { AdminPage } from '@/pages/admin-page'
 import { AdminRtdPage } from '@/pages/admin-rtd-page'
 import { AdminTourPage } from '@/pages/admin-tour-page'
@@ -42,7 +43,9 @@ export function App() {
               <Route path="/auth" element={<AuthPage />} />
 
               <Route element={<RequireAuth />}>
-                <Route path="/tour/scoring/:matchId" element={<TourScoringPage />} />
+                <Route element={<RequireTour />}>
+                  <Route path="/tour/scoring/:matchId" element={<TourScoringPage />} />
+                </Route>
 
                 <Route element={<AppShell />}>
                   <Route path="/" element={<HomePage />} />
@@ -51,22 +54,28 @@ export function App() {
                   <Route path="/stats" element={<StatsPage />} />
                   <Route path="/profile" element={<ProfilePage />} />
 
-                  <Route path="/tour" element={<TourPage />} />
-                  <Route path="/tour/day/:dayNumber" element={<TourDayPage />} />
-                  <Route path="/tour/green-jacket" element={<TourGreenJacketPage />} />
-                  <Route path="/tour/chumps" element={<TourChumpsPage />} />
+                  <Route element={<RequireTour />}>
+                    <Route path="/tour" element={<TourPage />} />
+                    <Route path="/tour/live" element={<TourLivePage />} />
+                    <Route path="/tour/champs/picks" element={<TourChampsPicksPage />} />
+                    <Route path="/tour/day/:dayNumber" element={<TourDayPage />} />
+                    <Route path="/tour/green-jacket" element={<Navigate to="/tour?tab=jacket" replace />} />
+                    <Route path="/tour/chumps" element={<Navigate to="/tour?tab=champs" replace />} />
+                    <Route path="/tour/champs" element={<Navigate to="/tour?tab=champs" replace />} />
+
+                    <Route path="/admin/tour" element={<AdminTourPage />} />
+                    <Route path="/admin/tour/event" element={<AdminTourEventPage />} />
+                    <Route path="/admin/tour/roster" element={<AdminTourRosterPage />} />
+                    <Route path="/admin/tour/courses" element={<AdminTourCoursesPage />} />
+                    <Route path="/admin/tour/courses/:courseId/holes" element={<AdminTourCourseHolesPage />} />
+                    <Route path="/admin/tour/formats" element={<AdminTourFormatsPage />} />
+                    <Route path="/admin/tour/days" element={<AdminTourDaysPage />} />
+                    <Route path="/admin/tour/handicaps" element={<AdminTourHandicapsPage />} />
+                    <Route path="/admin/tour/matches" element={<AdminTourMatchesPage />} />
+                  </Route>
 
                   <Route path="/admin" element={<AdminPage />} />
                   <Route path="/admin/rtd" element={<AdminRtdPage />} />
-                  <Route path="/admin/tour" element={<AdminTourPage />} />
-                  <Route path="/admin/tour/event" element={<AdminTourEventPage />} />
-                  <Route path="/admin/tour/roster" element={<AdminTourRosterPage />} />
-                  <Route path="/admin/tour/courses" element={<AdminTourCoursesPage />} />
-                  <Route path="/admin/tour/courses/:courseId/holes" element={<AdminTourCourseHolesPage />} />
-                  <Route path="/admin/tour/formats" element={<AdminTourFormatsPage />} />
-                  <Route path="/admin/tour/days" element={<AdminTourDaysPage />} />
-                  <Route path="/admin/tour/handicaps" element={<AdminTourHandicapsPage />} />
-                  <Route path="/admin/tour/matches" element={<AdminTourMatchesPage />} />
                   <Route path="/admin/rtd/season" element={<AdminRtdSeasonPage />} />
                   <Route path="/admin/rtd/groups" element={<AdminRtdGroupsPage />} />
                   <Route path="/admin/rtd/bonus" element={<AdminRtdBonusPage />} />

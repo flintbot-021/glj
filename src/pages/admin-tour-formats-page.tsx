@@ -79,7 +79,7 @@ export function AdminTourFormatsPage() {
         </Button>
         <div>
           <h1 className="text-xl font-black tracking-tight">Tour formats</h1>
-          <p className="text-sm text-muted-foreground">Shared format templates (stableford rules JSON)</p>
+          <p className="text-sm text-muted-foreground">Day 1–3 templates. Pick one when you set up each tour day.</p>
         </div>
       </div>
 
@@ -90,10 +90,9 @@ export function AdminTourFormatsPage() {
           <div className="rounded-xl border border-border bg-card p-4 mb-6 space-y-3">
             <p className="text-sm font-semibold">Preset formats</p>
             <p className="text-xs text-muted-foreground leading-relaxed">
-              One-click adds a row with a standard name, description, and <code className="text-[11px]">scoring_rules</code>{' '}
-              (<code className="text-[11px]">preset</code> is used to recognise the template later).
+              Adds the three Winelands formats. Green Jacket always uses each player’s own Stableford, even on matchplay day.
             </p>
-            <div className="flex flex-col sm:flex-row gap-2">
+            <div className="flex flex-col gap-2">
               {TOUR_FORMAT_PRESETS.map((preset) => {
                 const done = presetAlreadyAdded(preset.id)
                 return (

@@ -268,6 +268,7 @@ export function mapTourEvent(r: Record<string, unknown>): TourEvent {
     name: String(r.name),
     status: r.status as TourEvent['status'],
     target_points: num(r.target_points),
+    champs_deadline: r.champs_deadline != null ? String(r.champs_deadline) : undefined,
     created_at: String(r.created_at),
   }
 }
@@ -321,7 +322,7 @@ export function mapTourDay(r: Record<string, unknown>): TourDay {
     id: String(r.id),
     tour_id: String(r.tour_id),
     day_number: num(r.day_number) as TourDay['day_number'],
-    course_id: String(r.course_id),
+    course_id: r.course_id != null ? String(r.course_id) : null,
     format_id: String(r.format_id),
     status: r.status as TourDay['status'],
     played_at: r.played_at != null ? String(r.played_at) : undefined,

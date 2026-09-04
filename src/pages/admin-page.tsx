@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router'
 import { Button } from '@/components/ui/button'
 import { AlertTriangle, ChevronRight, Flag, MapPin } from 'lucide-react'
 import { useAuthStore } from '@/stores/auth-store'
+import { canSeeTour } from '@/lib/tour-preview'
 
 export function AdminPage() {
   const navigate = useNavigate()
@@ -48,25 +49,27 @@ export function AdminPage() {
           <ChevronRight className="h-5 w-5 text-muted-foreground shrink-0" />
         </button>
 
-        <button
-          type="button"
-          onClick={() => navigate('/admin/tour')}
-          className="w-full flex items-center gap-4 p-5 rounded-2xl border border-border bg-card text-left active:scale-[0.99] transition-transform hover:border-primary/20"
-        >
-          <div
-            className="h-14 w-14 rounded-2xl flex items-center justify-center flex-shrink-0 text-white"
-            style={{ backgroundColor: 'oklch(0.42 0.15 260)' }}
+        {canSeeTour(profile.email) && (
+          <button
+            type="button"
+            onClick={() => navigate('/admin/tour')}
+            className="w-full flex items-center gap-4 p-5 rounded-2xl border border-border bg-card text-left active:scale-[0.99] transition-transform hover:border-primary/20"
           >
-            <MapPin className="h-7 w-7" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="font-bold text-base">Tour</p>
-            <p className="text-sm text-muted-foreground leading-snug mt-0.5">
-              Courses, tour days, matches, day handicaps, live scoring setup
-            </p>
-          </div>
-          <ChevronRight className="h-5 w-5 text-muted-foreground shrink-0" />
-        </button>
+            <div
+              className="h-14 w-14 rounded-2xl flex items-center justify-center flex-shrink-0 text-white"
+              style={{ backgroundColor: 'oklch(0.42 0.15 260)' }}
+            >
+              <MapPin className="h-7 w-7" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-bold text-base">Tour</p>
+              <p className="text-sm text-muted-foreground leading-snug mt-0.5">
+                Courses, tour days, matches, day handicaps, live scoring setup
+              </p>
+            </div>
+            <ChevronRight className="h-5 w-5 text-muted-foreground shrink-0" />
+          </button>
+        )}
       </div>
     </div>
   )

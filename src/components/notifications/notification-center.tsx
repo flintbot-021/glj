@@ -7,6 +7,7 @@ import { formatRelativeTime } from '@/lib/format'
 import { Bell, Trophy, DollarSign, Flag, Star, Flame } from 'lucide-react'
 import type { NotificationType } from '@/lib/types'
 import { cn } from '@/lib/utils'
+import { canSeeTour } from '@/lib/tour-preview'
 
 const NOTIF_ICONS: Record<NotificationType, React.ReactNode> = {
   wager_request: <DollarSign className="h-4 w-4" />,
@@ -103,7 +104,8 @@ export function NotificationCenter() {
                     ) {
                       useUIStore.getState().openScoreSheet()
                     }
-                    navigate(NOTIF_ROUTES[notif.type])
+                    const dest = NOTIF_ROUTES[notif.type]
+                    navigate(dest === '/tour' && !canSeeTour(profile.email) ? '/' : dest)
                     close()
                   }}
                 >

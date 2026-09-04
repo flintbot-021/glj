@@ -440,6 +440,57 @@ export async function fetchTourChumpsPicks(tourId: string) {
   return (res.data as Record<string, unknown>[]).map(mapTourChumpsPick)
 }
 
+export async function fetchTourMatchesForDays(dayIds: string[]) {
+  if (dayIds.length === 0) return []
+  const res = await supabase.from('tour_matches').select('*').in('tour_day_id', dayIds).order('created_at')
+  if (res.error) throw new Error(res.error.message)
+  return (res.data as Record<string, unknown>[]).map(mapTourMatch)
+}
+
+export async function fetchTourMatchById(matchId: string) {
+  const res = await supabase.from('tour_matches').select('*').eq('id', matchId).maybeSingle()
+  if (res.error) throw new Error(res.error.message)
+  return res.data ? mapTourMatch(res.data as Record<string, unknown>) : null
+}
+
+export async function fetchTourHoleScoresForMatches(matchIds: string[]) {
+  if (matchIds.length === 0) return []
+  const res = await supabase.from('tour_hole_scores').select('*').in('match_id', matchIds)
+  if (res.error) throw new Error(res.error.message)
+  return (res.data as Record<string, unknown>[]).map(mapTourHoleScore)
+}
+
+export async function fetchTourPlayerDayHandicapsForDays(dayIds: string[]) {
+  if (dayIds.length === 0) return []
+  const res = await supabase.from('tour_player_day_handicaps').select('*').in('tour_day_id', dayIds)
+  if (res.error) throw new Error(res.error.message)
+  return (res.data as Record<string, unknown>[]).map(mapTourPlayerDayHandicap)
+}
+
+export async function upsertTourChampsPick(data: {
+  tour_id: string
+  picker_id: string
+  pick_1_id: string
+  pick_2_id: string
+  pick_3_id: string
+  pick_4_id: string
+  captain_id: string
+  captain_day: 1 | 2 | 3
+}) {
+  const res = await supabase
+    .from('tour_chumps_picks')
+    .upsert(
+      {
+        ...data,
+        locked_at: null,
+      },
+      { onConflict: 'tour_id,picker_id' },
+    )
+    .select('*')
+    .single()
+  return mapTourChumpsPick(throwOnErr('upsertTourChampsPick', res) as unknown as Record<string, unknown>)
+}
+
 export async function fetchTourPlayerDayHandicapsForDay(dayId: string) {
   const res = await supabase.from('tour_player_day_handicaps').select('*').eq('tour_day_id', dayId)
   if (res.error) throw new Error(res.error.message)
@@ -797,6 +848,16 @@ export async function upsertTourHoleScore(data: {
   return mapTourHoleScore(throwOnErr('upsertTourHoleScore', res) as unknown as Record<string, unknown>)
 }
 
+export async function deleteTourHoleScore(matchId: string, tourPlayerId: string, holeNumber: number) {
+  const res = await supabase
+    .from('tour_hole_scores')
+    .delete()
+    .eq('match_id', matchId)
+    .eq('tour_player_id', tourPlayerId)
+    .eq('hole_number', holeNumber)
+  if (res.error) throw new Error(res.error.message)
+}
+
 export async function markNotificationRead(notificationId: string) {
   const res = await supabase
     .from('notifications')
@@ -810,14 +871,19 @@ export async function markNotificationRead(notificationId: string) {
 
 // ─── Admin (Tour) ─────────────────────────────────────────────────────────────
 
-export async function insertTourEvent(data: { name: string; status: TourStatus; target_points: number }) {
+export async function insertTourEvent(data: {
+  name: string
+  status: TourStatus
+  target_points: number
+  champs_deadline?: string
+}) {
   const row = await supabase.from('tour_events').insert(data).select('*').single()
   return mapTourEvent(throwOnErr('insertTourEvent', row) as unknown as Record<string, unknown>)
 }
 
 export async function updateTourEvent(
   id: string,
-  patch: Partial<{ name: string; status: TourStatus; target_points: number }>
+  patch: Partial<{ name: string; status: TourStatus; target_points: number; champs_deadline: string | null }>
 ) {
   const res = await supabase.from('tour_events').update(patch).eq('id', id).select('*').maybeSingle()
   if (res.error) throw new Error(res.error.message)
@@ -934,7 +1000,7 @@ export async function deleteTourFormat(id: string) {
 export async function insertTourDay(data: {
   tour_id: string
   day_number: number
-  course_id: string
+  course_id: string | null
   format_id: string
   status: TourDayStatus
   played_at?: string | null
@@ -954,7 +1020,7 @@ export async function insertTourDay(data: {
 export async function updateTourDay(
   id: string,
   patch: Partial<{
-    course_id: string
+    course_id: string | null
     format_id: string
     status: TourDayStatus
     played_at: string | null

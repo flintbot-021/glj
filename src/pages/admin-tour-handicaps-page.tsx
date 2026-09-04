@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router'
+import { useNavigate, useSearchParams } from 'react-router'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -21,16 +21,20 @@ import type { Profile } from '@/lib/types'
 
 export function AdminTourHandicapsPage() {
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const profile = useAuthStore((s) => s.profile)
   const { data: ev } = useTourEvent()
   const { data: days, isLoading: daysLoading } = useTourDays()
   const { data: roster, isLoading: rosterLoading } = useTourPlayers()
-  const [dayId, setDayId] = useState('')
+  const dayId = searchParams.get('day') ?? ''
+  const setDayId = (id: string) => setSearchParams({ day: id }, { replace: true })
   const { data: dayHcs, isLoading: hcLoading } = useTourPlayerDayHandicapsQuery(dayId || undefined)
   const upsert = useUpsertTourPlayerDayHandicap()
 
   useEffect(() => {
-    if (days?.length && !dayId) setDayId(days[0].id)
+    if (!days?.length) return
+    if (dayId && days.some((d) => d.id === dayId)) return
+    setDayId(days[0]!.id)
   }, [days, dayId])
 
   const hcByTp = useMemo(() => new Map(dayHcs?.map((h) => [h.tour_player_id, h.course_handicap]) ?? []), [dayHcs])
@@ -76,7 +80,7 @@ export function AdminTourHandicapsPage() {
               <SelectContent>
                 {days.map((d) => (
                   <SelectItem key={d.id} value={d.id}>
-                    Day {d.day_number} — {d.course.name}
+                    Day {d.day_number} — {d.course?.name ?? 'Course TBC'}
                   </SelectItem>
                 ))}
               </SelectContent>

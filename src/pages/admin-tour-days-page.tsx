@@ -19,6 +19,8 @@ import {
 import { Skeleton } from '@/components/ui/skeleton'
 import type { TourDayStatus } from '@/lib/types'
 
+const COURSE_TBC = '__tbc__'
+
 export function AdminTourDaysPage() {
   const navigate = useNavigate()
   const profile = useAuthStore((s) => s.profile)
@@ -62,11 +64,11 @@ export function AdminTourDaysPage() {
   const onAddDay = () => {
     if (!ev) return
     const n = Number(addNum) as 1 | 2 | 3
-    if (![1, 2, 3].includes(n) || !addCourse || !addFormat) return
+    if (![1, 2, 3].includes(n) || !addFormat) return
     insertDay.mutate({
       tour_id: ev.id,
       day_number: n,
-      course_id: addCourse,
+      course_id: addCourse || null,
       format_id: addFormat,
       status: addStatus,
       played_at: null,
@@ -81,7 +83,7 @@ export function AdminTourDaysPage() {
         </Button>
         <div>
           <h1 className="text-xl font-black tracking-tight">Tour days</h1>
-          <p className="text-sm text-muted-foreground">Up to three days: course, format, status</p>
+          <p className="text-sm text-muted-foreground">Up to three days: format now, course when known</p>
         </div>
       </div>
 
@@ -91,7 +93,7 @@ export function AdminTourDaysPage() {
         <Skeleton className="h-48 rounded-xl" />
       ) : (
         <>
-          {missing.length > 0 && courseList.length > 0 && formatList.length > 0 && (
+          {missing.length > 0 && formatList.length > 0 && (
             <div className="rounded-xl border border-border bg-card p-4 mb-4 space-y-3 max-w-xl">
               <p className="text-sm font-semibold">Add a day</p>
               <div className="grid gap-3 sm:grid-cols-2">
@@ -112,11 +114,17 @@ export function AdminTourDaysPage() {
                 </div>
                 <div className="space-y-1">
                   <Label>Course</Label>
-                  <Select value={addCourse} onValueChange={(v) => v != null && setAddCourse(v)}>
+                  <Select
+                    value={addCourse || COURSE_TBC}
+                    onValueChange={(v) => v != null && setAddCourse(v === COURSE_TBC ? '' : v)}
+                  >
                     <SelectTrigger>
-                      <SelectValue placeholder="Course…" />
+                      <SelectValue>
+                        {addCourse ? courseList.find((c) => c.id === addCourse)?.name ?? 'Course…' : 'Course TBC'}
+                      </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value={COURSE_TBC}>Course TBC</SelectItem>
                       {courseList.map((c) => (
                         <SelectItem key={c.id} value={c.id}>
                           {c.name}
@@ -158,7 +166,7 @@ export function AdminTourDaysPage() {
               <Button
                 size="sm"
                 onClick={onAddDay}
-                disabled={insertDay.isPending || !addCourse || !addFormat}
+                disabled={insertDay.isPending || !addFormat}
               >
                 {insertDay.isPending ? 'Adding…' : 'Add day'}
               </Button>
@@ -194,8 +202,8 @@ export function AdminTourDaysPage() {
               </TableBody>
             </Table>
           </div>
-          {(courseList.length === 0 || formatList.length === 0) && (
-            <p className="text-sm text-muted-foreground mt-3">Add at least one course and one format before creating days.</p>
+          {formatList.length === 0 && (
+            <p className="text-sm text-muted-foreground mt-3">Add formats before creating days. Course can wait.</p>
           )}
         </>
       )}
@@ -214,17 +222,17 @@ function DayRow({
   day: {
     id: string
     day_number: number
-    course_id: string
+    course_id: string | null
     format_id: string
     status: TourDayStatus
     played_at?: string
-    course: { id: string; name: string }
+    course: { id: string; name: string } | null
     format: { id: string; name: string }
   }
   courses: { id: string; name: string }[]
   formats: { id: string; name: string }[]
   onSave: (patch: {
-    course_id?: string
+    course_id?: string | null
     format_id?: string
     status?: TourDayStatus
     played_at?: string | null
@@ -232,10 +240,12 @@ function DayRow({
   onDelete: () => void
   busy: boolean
 }) {
-  const [courseId, setCourseId] = useState(day.course_id)
+  const [courseId, setCourseId] = useState(day.course_id ?? COURSE_TBC)
   const [formatId, setFormatId] = useState(day.format_id)
   const [status, setStatus] = useState<TourDayStatus>(day.status)
   const [played, setPlayed] = useState(day.played_at?.slice(0, 10) ?? '')
+  const courseLabel =
+    courseId === COURSE_TBC ? 'Course TBC' : courses.find((c) => c.id === courseId)?.name ?? 'Course TBC'
 
   return (
     <TableRow>
@@ -243,9 +253,10 @@ function DayRow({
       <TableCell>
         <Select value={courseId} onValueChange={(v) => v != null && setCourseId(v)}>
           <SelectTrigger size="sm" className="w-[160px]">
-            <SelectValue />
+            <SelectValue>{courseLabel}</SelectValue>
           </SelectTrigger>
           <SelectContent>
+            <SelectItem value={COURSE_TBC}>Course TBC</SelectItem>
             {courses.map((c) => (
               <SelectItem key={c.id} value={c.id}>
                 {c.name}
@@ -256,7 +267,7 @@ function DayRow({
       </TableCell>
       <TableCell>
         <Select value={formatId} onValueChange={(v) => v != null && setFormatId(v)}>
-          <SelectTrigger size="sm" className="w-[160px]">
+          <SelectTrigger size="sm" className="w-[220px]">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -296,7 +307,7 @@ function DayRow({
           disabled={busy}
           onClick={() =>
             onSave({
-              course_id: courseId,
+              course_id: courseId === COURSE_TBC ? null : courseId,
               format_id: formatId,
               status,
               played_at: played === '' ? null : played,

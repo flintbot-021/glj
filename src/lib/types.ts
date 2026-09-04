@@ -297,6 +297,8 @@ export interface TourEvent {
   name: string
   status: TourStatus
   target_points: number
+  /** ISO timestamp. After this, Tour Champs picks cannot change. */
+  champs_deadline?: string
   created_at: string
 }
 
@@ -340,7 +342,7 @@ export interface TourDay {
   id: string
   tour_id: string
   day_number: number
-  course_id: string
+  course_id: string | null
   format_id: string
   status: TourDayStatus
   played_at?: string

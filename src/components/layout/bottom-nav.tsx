@@ -2,6 +2,7 @@ import { useLocation, useNavigate } from 'react-router'
 import { Home, Trophy, Banknote, Flag, Settings } from 'lucide-react'
 import { useUIStore } from '@/stores/ui-store'
 import { useAuthStore } from '@/stores/auth-store'
+import { canSeeTour } from '@/lib/tour-preview'
 
 const GREEN  = 'oklch(0.22 0.068 157)'
 const BORDER = 'oklch(0.30 0.068 157)'
@@ -23,6 +24,9 @@ export function BottomNav() {
   const handleTourClick = () => {
     navigate('/tour')
   }
+
+  const showTour = canSeeTour(profile?.email)
+  const showAdmin = !!profile?.is_admin && (!showTour || !activeTourTab)
 
   return (
     <nav
@@ -56,16 +60,17 @@ export function BottomNav() {
 
         <NavButton icon={<Banknote className="h-[22px] w-[22px]" />} label="Wagers" active={isActive('/wagers')} onClick={() => navigate('/wagers')} />
 
-        {/* Last slot: Tour or Admin for admins */}
-        {profile?.is_admin && !activeTourTab ? (
+        {showAdmin ? (
           <NavButton icon={<Settings className="h-[22px] w-[22px]" />} label="Admin" active={isActive('/admin')} onClick={() => navigate('/admin')} />
-        ) : (
+        ) : showTour ? (
           <NavButton
             icon={<Flag className="h-[22px] w-[22px]" />}
             label="Tour"
             active={isActive('/tour')}
             onClick={handleTourClick}
           />
+        ) : (
+          <div className="min-w-[52px]" aria-hidden />
         )}
       </div>
     </nav>

@@ -33,6 +33,7 @@ import {
   fetchTourHoleScores,
   fetchTourChumpsPicks,
   fetchTourPlayerDayHandicapsForDay,
+  upsertTourChampsPick,
   upsertTourPlayerDayHandicap,
   fetchGroupForPlayer,
   fetchTourDayById,
@@ -93,6 +94,9 @@ import {
   deleteTourMatch,
   replaceTourMatchPlayers,
 } from '@/lib/supabase/api'
+import { loadTourBoard, loadTourMatchBundle, saveTourHolesAndRollup } from '@/lib/tour-board'
+import { champsPicksLocked } from '@/lib/tour-colors'
+import { CHAMPS_RANK_BUDGET, champsRankSum } from '@/lib/tour-scoring'
 import { getLadderSubSeasonId, getBestTwoRounds, ladderTotals } from '@/lib/bonus-ladder'
 import { profileDisplayName } from '@/lib/format'
 import type {
@@ -962,7 +966,7 @@ export function useTourDays() {
       return days.map((d) => ({
         ...d,
         format: formatMap.get(d.format_id)!,
-        course: courseMap.get(d.course_id)!,
+        course: d.course_id ? courseMap.get(d.course_id) ?? null : null,
       }))
     },
     enabled: !!ev?.id,
@@ -977,9 +981,9 @@ export function useTourDayMatches(dayId: string) {
       if (!dayRow) return []
       const [format, course] = await Promise.all([
         fetchTourFormatById(dayRow.format_id),
-        fetchTourCourseById(dayRow.course_id),
+        dayRow.course_id ? fetchTourCourseById(dayRow.course_id) : Promise.resolve(null),
       ])
-      if (!format || !course) return []
+      if (!format) return []
 
       const matches = await fetchTourMatchesForDay(dayId)
       const matchIds = matches.map((m) => m.id)
@@ -1141,7 +1145,7 @@ export function useTourHoles() {
     queryFn: async () => {
       const days = await fetchTourDays(ev!.id)
       const first = days[0]
-      if (!first) return []
+      if (!first?.course_id) return []
       return fetchTourHolesForCourse(first.course_id)
     },
     enabled: !!ev?.id,
@@ -1172,6 +1176,8 @@ function invalidateTourAdminCaches(qc: QueryClient) {
     'tour-chumps',
     'tour-green-jacket',
     'tour-player-day-hc',
+    'tour-board',
+    'tour-match-bundle',
   ] as const
   for (const p of prefixes) {
     qc.invalidateQueries({ queryKey: [p] })
@@ -1404,6 +1410,71 @@ export function useReplaceTourMatchPlayers() {
   })
 }
 
+export function useTourBoard() {
+  return useQuery({
+    queryKey: ['tour-board'],
+    queryFn: loadTourBoard,
+    refetchInterval: 8000,
+  })
+}
+
+export function useTourMatchBundle(matchId: string | undefined) {
+  return useQuery({
+    queryKey: ['tour-match-bundle', matchId],
+    queryFn: () => loadTourMatchBundle(matchId!),
+    enabled: !!matchId,
+    refetchInterval: 5000,
+  })
+}
+
+export function useSaveTourHoles() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      rows,
+      ctx,
+    }: {
+      rows: Parameters<typeof saveTourHolesAndRollup>[0]
+      ctx: Parameters<typeof saveTourHolesAndRollup>[1]
+    }) => saveTourHolesAndRollup(rows, ctx),
+    onSuccess: (_d, vars) => {
+      qc.invalidateQueries({ queryKey: ['tour-match-bundle', vars.ctx.matchId] })
+      qc.invalidateQueries({ queryKey: ['tour-board'] })
+      qc.invalidateQueries({ queryKey: ['tour-hole-scores'] })
+      qc.invalidateQueries({ queryKey: ['tour-day-matches'] })
+      qc.invalidateQueries({ queryKey: ['tour-leaderboard'] })
+    },
+  })
+}
+
+export function useSaveTourChampsPick() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (data: Parameters<typeof upsertTourChampsPick>[0]) => {
+      const ev = await fetchTourEvent()
+      if (champsPicksLocked(ev?.champs_deadline)) {
+        throw new Error('Tour Champs picks locked at Thursday 10:00')
+      }
+      const ids = [data.pick_1_id, data.pick_2_id, data.pick_3_id, data.pick_4_id]
+      if (new Set(ids).size !== 4) throw new Error('Pick four different players')
+      if (!ids.includes(data.captain_id)) throw new Error('Captain must be one of your four')
+      const tps = await fetchTourPlayers(data.tour_id)
+      const seeds = ids.map((id) => {
+        const row = tps.find((p) => p.id === id)
+        if (!row) throw new Error('Invalid pick')
+        return row.seed
+      })
+      if (champsRankSum(seeds) < CHAMPS_RANK_BUDGET) {
+        throw new Error(`Your four ranks must add up to ${CHAMPS_RANK_BUDGET} or more`)
+      }
+      return upsertTourChampsPick(data)
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['tour-board'] })
+      qc.invalidateQueries({ queryKey: ['tour-chumps'] })
+    },
+  })
+}
 
 export function useTourChumps() {
   const { data: ev } = useTourEvent()
