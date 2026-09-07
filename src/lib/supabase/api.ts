@@ -1102,6 +1102,11 @@ export async function replaceTourMatchPlayers(
   if (ins.error) throw new Error(ins.error.message)
 }
 
+export async function rollupTourMatch(matchId: string) {
+  const res = await supabase.rpc('rollup_tour_match', { p_match_id: matchId })
+  return mapTourMatch(throwOnErr('rollupTourMatch', res) as unknown as Record<string, unknown>)
+}
+
 export async function setTourMatchWager(matchId: string, amount: number) {
   const res = await supabase.rpc('set_tour_match_wager', {
     p_match_id: matchId,

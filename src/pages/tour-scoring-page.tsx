@@ -150,10 +150,24 @@ export function TourScoringPage() {
   const showConfirm =
     !viewOnly &&
     !!bundle &&
+    iAmInMatch &&
     !bundle.match.card_confirmed_at &&
     !!liveComputed?.decided &&
     cardComplete &&
     (forceConfirm || currentHole >= 18)
+
+  const saveCtx = () => {
+    if (!bundle || !matchId) return null
+    return {
+      matchId,
+      playerIdsA: bundle.playersA.map((p) => p.id),
+      playerIdsB: bundle.playersB.map((p) => p.id),
+      teamA: bundle.match.team_a,
+      teamB: bundle.match.team_b,
+      spec: matchFormatFromTourFormat(bundle.format),
+      holes: bundle.holes.map((h) => ({ hole_number: h.hole_number, par: h.par })),
+    }
+  }
 
   const persistPlayer = (
     player: TourMatchPlayerView,
@@ -166,6 +180,8 @@ export function TourScoringPage() {
     const prev = persistTimers.current.get(key)
     if (prev) window.clearTimeout(prev)
     const timeout = window.setTimeout(() => {
+      const ctx = saveCtx()
+      if (!ctx) return
       const { net, stableford } =
         gross < 1 ? { net: 0, stableford: 0 } : computeTourHoleScore(gross, holeDef, player.course_handicap_day)
       void save.mutateAsync({
@@ -179,18 +195,41 @@ export function TourScoringPage() {
             stableford_points: stableford,
           },
         ],
-        ctx: {
-          matchId,
-          playerIdsA: bundle.playersA.map((p) => p.id),
-          playerIdsB: bundle.playersB.map((p) => p.id),
-          teamA: bundle.match.team_a,
-          teamB: bundle.match.team_b,
-          spec: matchFormatFromTourFormat(bundle.format),
-          holes: bundle.holes.map((h) => ({ hole_number: h.hole_number, par: h.par })),
-        },
+        ctx,
       })
     }, 160)
     persistTimers.current.set(key, timeout)
+  }
+
+  const flushDraft = async () => {
+    const ctx = saveCtx()
+    if (!bundle || !matchId || !ctx) return
+    for (const t of persistTimers.current.values()) window.clearTimeout(t)
+    persistTimers.current.clear()
+    const rows = Object.entries(draft).flatMap(([key, gross]) => {
+      const sep = key.lastIndexOf(':')
+      const playerId = key.slice(0, sep)
+      const holeNumber = Number(key.slice(sep + 1))
+      const player = allPlayers.find((p) => p.id === playerId)
+      const holeDef = bundle.holes.find((h) => h.hole_number === holeNumber)
+      if (!player || !holeDef) return []
+      const { net, stableford } =
+        gross < 1
+          ? { net: 0, stableford: 0 }
+          : computeTourHoleScore(gross, holeDef, player.course_handicap_day)
+      return [
+        {
+          match_id: matchId,
+          tour_player_id: player.id,
+          hole_number: holeNumber,
+          gross_score: gross,
+          net_score: net,
+          stableford_points: stableford,
+        },
+      ]
+    })
+    if (rows.length === 0) return
+    await save.mutateAsync({ rows, ctx })
   }
 
   const bump = (playerId: string, delta: number) => {
@@ -305,14 +344,19 @@ export function TourScoringPage() {
         computed={liveComputed}
         overlayScores={overlayScores}
         error={confirmError}
-        busy={confirmCard.isPending}
+        busy={confirmCard.isPending || save.isPending}
         onBack={() => setForceConfirm(false)}
         onConfirm={() => {
           setConfirmError('')
-          confirmCard.mutate(matchId, {
-            onSuccess: () => navigate('/tour'),
-            onError: (e) => setConfirmError(e instanceof Error ? e.message : 'Could not confirm'),
-          })
+          void (async () => {
+            try {
+              await flushDraft()
+              await confirmCard.mutateAsync(matchId)
+              navigate('/tour')
+            } catch (e) {
+              setConfirmError(e instanceof Error ? e.message : 'Could not confirm')
+            }
+          })()
         }}
       />
     )
@@ -376,6 +420,7 @@ export function TourScoringPage() {
             teamA={bundle.match.team_a}
             cardComplete={cardComplete}
             confirmed={locked}
+            canConfirm={iAmInMatch}
           />
 
           <div className="mt-3">
@@ -435,7 +480,7 @@ export function TourScoringPage() {
           style={{ backgroundColor: TOUR_GOLD, color: TOUR_GOLD_FG }}
           onClick={() => {
             if (currentHole >= 18) {
-              if (!locked && liveComputed.decided && cardComplete) {
+              if (!locked && iAmInMatch && liveComputed.decided && cardComplete) {
                 setForceConfirm(true)
                 return
               }
@@ -458,7 +503,7 @@ export function TourScoringPage() {
           }}
         >
           {currentHole >= 18
-            ? liveComputed.decided && cardComplete && !locked
+            ? liveComputed.decided && cardComplete && !locked && iAmInMatch
               ? 'Review & confirm'
               : liveComputed.decided && !cardComplete
                 ? 'Finish remaining holes'
@@ -476,11 +521,13 @@ function MatchStandings({
   teamA,
   cardComplete,
   confirmed,
+  canConfirm,
 }: {
   computed: ComputedMatch
   teamA: TourTeam
   cardComplete: boolean
   confirmed: boolean
+  canConfirm: boolean
 }) {
   const wins93 = teamA === '93s' ? computed.aWins : computed.bWins
   const wins91 = teamA === '91s' ? computed.aWins : computed.bWins
@@ -490,7 +537,8 @@ function MatchStandings({
 
   let subtitle: string
   if (confirmed) subtitle = 'Confirmed'
-  else if (computed.decided && cardComplete) subtitle = 'Card complete · confirm to settle'
+  else if (computed.decided && cardComplete && canConfirm) subtitle = 'Card complete · confirm to settle'
+  else if (computed.decided && cardComplete) subtitle = 'Card complete'
   else if (computed.decided) subtitle = 'Match decided · finish all 18 holes'
   else if (remaining === 1) subtitle = '1 hole to play'
   else subtitle = `${remaining} holes to play`

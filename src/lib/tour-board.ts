@@ -17,7 +17,7 @@ import {
   fetchTourCourseById,
   fetchTourDayById,
   fetchTourFormatById,
-  updateTourMatch,
+  rollupTourMatch,
   upsertTourHoleScore,
   deleteTourHoleScore,
 } from '@/lib/supabase/api'
@@ -411,18 +411,7 @@ export async function saveTourHolesAndRollup(
     ctx.spec,
     ctx.holes,
   )
-  // Decided early → points on boards; status stays in_progress until card confirm.
-  const existing = await fetchTourMatchById(ctx.matchId)
-  const confirmed = !!existing?.card_confirmed_at
-  const status = confirmed
-    ? 'complete'
-    : computed.holesPlayed > 0 || computed.decided
-      ? 'in_progress'
-      : 'scheduled'
-  await updateTourMatch(ctx.matchId, {
-    status,
-    team_a_points: computed.pointsA,
-    team_b_points: computed.pointsB,
-  })
+  // Points / status via RPC so match players (not only admins) can roll up.
+  await rollupTourMatch(ctx.matchId)
   return computed
 }
