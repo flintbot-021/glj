@@ -69,6 +69,17 @@ export function matchIsPending(view: TourMatchView): boolean {
   return view.playersA.length === 0 && view.playersB.length === 0
 }
 
+/** Official tour points — only count after the card is confirmed. */
+export function officialMatchPoints(view: TourMatchView): { points93: number; points91: number } {
+  if (!view.match.card_confirmed_at) return { points93: 0, points91: 0 }
+  const a = view.match.team_a_points
+  const b = view.match.team_b_points
+  return {
+    points93: view.match.team_a === '93s' ? a : b,
+    points91: view.match.team_a === '91s' ? a : b,
+  }
+}
+
 export interface TourBoardDay {
   day: TourDay
   format: TourFormat
@@ -233,8 +244,8 @@ export async function loadTourBoard(): Promise<TourBoard | null> {
       format,
       course,
       matches: views,
-      points93: views.reduce((s, v) => s + v.computed.points93, 0),
-      points91: views.reduce((s, v) => s + v.computed.points91, 0),
+      points93: views.reduce((s, v) => s + officialMatchPoints(v).points93, 0),
+      points91: views.reduce((s, v) => s + officialMatchPoints(v).points91, 0),
     }
   })
 

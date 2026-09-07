@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react'
 import { TEAM_BLUE, TEAM_RED, TOUR_GOLD } from '@/lib/tour-colors'
-import { matchIsPending, type TourBoardDay, type TourMatchView } from '@/lib/tour-board'
+import { matchIsPending, officialMatchPoints, type TourBoardDay, type TourMatchView } from '@/lib/tour-board'
 import { expectedMatchCount } from '@/lib/tour-scoring'
 import type { TourTeam } from '@/lib/types'
 
@@ -20,13 +20,16 @@ export function fmtPts(n: number): string {
 
 export function tallySlotFromMatch(m: TourMatchView | null): TallySlot {
   if (!m || matchIsPending(m)) return { kind: 'pending', team: null }
+  if (m.match.card_confirmed_at) {
+    const pts = officialMatchPoints(m)
+    if (pts.points93 === 0.5 && pts.points91 === 0.5) return { kind: 'won', team: 'half' }
+    if (pts.points93 > pts.points91) return { kind: 'won', team: '93s' }
+    if (pts.points91 > pts.points93) return { kind: 'won', team: '91s' }
+    return { kind: 'won', team: m.computed.leader === 'half' ? 'half' : m.computed.leader }
+  }
   if (m.computed.holesPlayed === 0) return { kind: 'to_play', team: null }
-  const team =
-    m.computed.leader === 'half' || (m.computed.closed && m.computed.points93 === 0.5)
-      ? 'half'
-      : m.computed.leader
-  if (m.computed.closed) return { kind: 'won', team }
-  return { kind: 'live', team }
+  if (m.computed.leader === 'half') return { kind: 'live', team: 'half' }
+  return { kind: 'live', team: m.computed.leader }
 }
 
 export function padDayMatches(matches: TourMatchView[], size = SLOTS_PER_DAY): (TourMatchView | null)[] {

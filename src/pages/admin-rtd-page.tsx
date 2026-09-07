@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router'
 import { Button } from '@/components/ui/button'
-import { AlertTriangle, CalendarDays, ChevronLeft, ChevronRight, Star, Trophy, Users } from 'lucide-react'
+import { AlertTriangle, CalendarDays, ChevronLeft, ChevronRight, Sparkles, Star, Trophy, Users } from 'lucide-react'
 import { useAuthStore } from '@/stores/auth-store'
 
 export function AdminRtdPage() {
@@ -25,7 +25,7 @@ export function AdminRtdPage() {
         </Button>
         <div>
           <h1 className="text-2xl font-black tracking-tight">Road to Dias</h1>
-          <p className="text-sm text-muted-foreground">Season, groups, stroke bonus</p>
+          <p className="text-sm text-muted-foreground">Season, groups, playoff draw</p>
         </div>
       </div>
 
@@ -59,9 +59,16 @@ export function AdminRtdPage() {
           onClick={() => navigate('/admin/rtd/players')}
         />
         <AdminRtdLink
+          icon={<Sparkles className="h-5 w-5" />}
+          label="Playoff draw"
+          desc="Set the eight, then the lucky picker and wheel"
+          color="oklch(0.80 0.14 72)"
+          onClick={() => navigate('/admin/rtd/playoffs')}
+        />
+        <AdminRtdLink
           icon={<Trophy className="h-5 w-5" />}
           label="Knockout matchups"
-          desc="Set draw pairings and results (public bracket follows progress)"
+          desc="Record QF, SF and Final results after the live draw"
           color="oklch(0.60 0.18 330)"
           onClick={() => navigate('/admin/rtd/knockout')}
         />
