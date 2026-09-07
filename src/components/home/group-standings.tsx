@@ -18,11 +18,11 @@ function GrudgePointsCell({
     return (
       <span
         className="inline-flex w-7 items-center justify-end gap-0.5 text-xs tabular-nums text-amber-300/90"
-        title={`+${formatPoints(banked)} grudge banked — counts after all group games`}
+        title={`+${formatPoints(banked)} grudge banked — counts after 3 group games`}
       >
         <Clock className="h-3 w-3 shrink-0" aria-hidden />
         <span className="sr-only">
-          {formatPoints(banked)} grudge points pending until fixtures complete
+          {formatPoints(banked)} grudge points pending until 3 group games are played
         </span>
         <span aria-hidden>{formatPoints(banked)}</span>
       </span>

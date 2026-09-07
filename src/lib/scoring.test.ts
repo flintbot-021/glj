@@ -121,4 +121,57 @@ const players = [a, b, c, d]
   }
 }
 
+{
+  // Group of five: still 4 fixtures on the table, but GP unlocks after 3 games
+  const e = fakePlayer('e', 'Eve')
+  const five = [a, b, c, d, e]
+  const results = [
+    result({ player_a_id: 'a', player_b_id: 'b', result: 'win_a' }),
+    result({ player_a_id: 'a', player_b_id: 'c', result: 'win_a' }),
+    result({ player_a_id: 'a', player_b_id: 'd', result: 'win_a' }),
+  ]
+  // Alice 3W = 9 MP, +3 grudge → should apply even with Eve still to play
+  const standings = computeGroupStandings(
+    five,
+    results,
+    {},
+    undefined,
+    { a: 3 },
+    5
+  )
+
+  const alice = standings.find((s) => s.player.id === 'a')!
+  assert.equal(alice.played, 3)
+  assert.equal(alice.fixtures_required, 4)
+  assert.equal(alice.grudge_points_banked, 3)
+  assert.equal(alice.grudge_points, 3)
+  assert.equal(alice.grudge_pending, false)
+  assert.equal(alice.total_points, 12)
+}
+
+{
+  // Group of five: 2 games played → GP still pending
+  const e = fakePlayer('e', 'Eve')
+  const five = [a, b, c, d, e]
+  const results = [
+    result({ player_a_id: 'a', player_b_id: 'b', result: 'win_a' }),
+    result({ player_a_id: 'a', player_b_id: 'c', result: 'win_a' }),
+  ]
+  const standings = computeGroupStandings(
+    five,
+    results,
+    {},
+    undefined,
+    { a: 3 },
+    5
+  )
+
+  const alice = standings.find((s) => s.player.id === 'a')!
+  assert.equal(alice.played, 2)
+  assert.equal(alice.fixtures_required, 4)
+  assert.equal(alice.grudge_points, 0)
+  assert.equal(alice.grudge_pending, true)
+  assert.equal(alice.total_points, 6)
+}
+
 console.log('scoring.test.ts: all assertions passed')

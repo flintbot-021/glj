@@ -1,5 +1,5 @@
 import { STABLEFORD_POINTS } from './constants'
-import { MATCH_PLAY_POINTS } from './league-rules'
+import { MATCH_PLAY_POINTS, TOURNAMENT_STRUCTURE } from './league-rules'
 import type { TourHole } from './types'
 
 export function calculateNetScore(grossScore: number, handicap: number): number {
@@ -100,7 +100,14 @@ export function computeGroupStandings(
   groupSize: number = players.length
 ) {
   const { winPoints, drawPoints } = matchPointsConfig
+  // Full round-robin for the group (5-player Group A → 4 games).
   const fixturesRequired = Math.max(0, groupSize - 1)
+  // GP unlocks after the standard 3 group games so the group of five
+  // is not disadvantaged vs groups of four.
+  const grudgeUnlockAfter = Math.min(
+    fixturesRequired,
+    TOURNAMENT_STRUCTURE.groupMatchesPerPlayer
+  )
 
   return players
     .map((player) => {
@@ -124,12 +131,12 @@ export function computeGroupStandings(
       })
 
       const played = playerResults.length
-      const fixturesComplete = played >= fixturesRequired
+      const grudgeUnlocked = played >= grudgeUnlockAfter
       const matchPoints = wins * winPoints + draws * drawPoints
       const bonus = bonusPoints[player.id] ?? 0
       const grudgeBanked = grudgePoints[player.id] ?? 0
-      const grudgeApplied = fixturesComplete ? grudgeBanked : 0
-      const grudgePending = grudgeBanked > 0 && !fixturesComplete
+      const grudgeApplied = grudgeUnlocked ? grudgeBanked : 0
+      const grudgePending = grudgeBanked > 0 && !grudgeUnlocked
       const total = matchPoints + bonus + grudgeApplied
 
       return {
