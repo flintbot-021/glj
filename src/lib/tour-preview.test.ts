@@ -9,6 +9,8 @@ const after = TOUR_PUBLIC_AT_MS
 
 assert.equal(canSeeTour('kdbar17@gmail.com', before), true)
 assert.equal(canSeeTour('KDBAR17@GMAIL.COM', before), true)
+assert.equal(canSeeTour('rmbminnaar@gmail.com', before), true)
+assert.equal(canSeeTour('RMBMINNAAR@GMAIL.COM', before), true)
 assert.equal(canSeeTour('someone@else.com', before), false)
 assert.equal(canSeeTour(undefined, before), false)
 assert.equal(canSeeTour('someone@else.com', after), true)
