@@ -27,7 +27,10 @@ import type {
   TourPlayerDayHandicap,
   TourScrapbookEntry,
   TourScrapSource,
+  PlayoffDraw,
+  PlayoffEntry,
 } from '@/lib/types'
+import { isPlayoffSlotKey } from '@/lib/playoff-draw'
 
 function num(v: unknown): number {
   if (v === null || v === undefined) return 0
@@ -167,6 +170,31 @@ export function mapBonusAward(r: Record<string, unknown>): BonusPointAward {
     position: num(r.position) as BonusPointAward['position'],
     points_awarded: num(r.points_awarded),
     created_at: String(r.created_at),
+  }
+}
+
+export function mapPlayoffDraw(r: Record<string, unknown>): PlayoffDraw {
+  const slot = r.last_assigned_slot != null ? String(r.last_assigned_slot) : null
+  return {
+    id: String(r.id),
+    season_id: String(r.season_id),
+    status: r.status as PlayoffDraw['status'],
+    phase: r.phase as PlayoffDraw['phase'],
+    current_spinner_id: r.current_spinner_id != null ? String(r.current_spinner_id) : null,
+    last_assigned_slot: isPlayoffSlotKey(slot) ? slot : null,
+    created_at: String(r.created_at),
+    updated_at: String(r.updated_at),
+  }
+}
+
+export function mapPlayoffEntry(r: Record<string, unknown>): PlayoffEntry {
+  const slot = r.slot_key != null ? String(r.slot_key) : null
+  return {
+    id: String(r.id),
+    draw_id: String(r.draw_id),
+    player_id: String(r.player_id),
+    slot_key: isPlayoffSlotKey(slot) ? slot : null,
+    drawn_at: r.drawn_at != null ? String(r.drawn_at) : null,
   }
 }
 

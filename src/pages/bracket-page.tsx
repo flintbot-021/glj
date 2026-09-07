@@ -1,7 +1,9 @@
 import { useMemo } from 'react'
 import { Info, Trophy } from 'lucide-react'
-import { useActiveSeason, useAllGroupStandings, useKnockoutBracket } from '@/hooks/use-data'
+import { useActiveSeason, useAllGroupStandings, useKnockoutBracket, usePlayoffDraw } from '@/hooks/use-data'
 import { TOURNAMENT_STRUCTURE } from '@/lib/league-rules'
+import { PlayoffHalvesBoard } from '@/components/playoff/halves-board'
+import { PLAYOFF_SLOTS, type PlayoffSlotKey } from '@/lib/playoff-draw'
 import { PlayerAvatar } from '@/components/ui/player-avatar'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -12,6 +14,7 @@ import { formatPoints, profileDisplayName } from '@/lib/format'
 export function BracketPage() {
   const { data: season } = useActiveSeason()
   const { data: fixtures, isLoading: fxLoading } = useKnockoutBracket()
+  const { data: playoff } = usePlayoffDraw()
   const { data: allStandings, isLoading: stLoading } = useAllGroupStandings()
 
   const bySlot = (round: 'qf' | 'sf' | 'final') =>
@@ -24,6 +27,17 @@ export function BracketPage() {
   const hasDrawContent = Boolean(fixtures?.some((f) => f.player_a_id || f.player_b_id))
   const hasFixtureRows = (fixtures?.length ?? 0) > 0
   const showPlaceholderGrid = !fxLoading && !hasFixtureRows
+  const drawLive = playoff?.draw.status === 'drawing'
+
+  const slotPlayers = useMemo(() => {
+    const out: Partial<Record<PlayoffSlotKey, Profile>> = {}
+    for (const s of PLAYOFF_SLOTS) {
+      const fx = qfs.find((f) => f.slot_index === s.qf)
+      const p = s.seat === 'a' ? fx?.player_a : fx?.player_b
+      if (p) out[s.key] = p
+    }
+    return out
+  }, [qfs])
 
   const topTwoByGroup = useMemo(() => {
     if (!allStandings?.length) return []
@@ -36,8 +50,11 @@ export function BracketPage() {
     })
   }, [allStandings])
 
-  const slotLabel = (round: 'qf' | 'sf' | 'final', slot: number) =>
-    round === 'final' ? 'Final' : `${round === 'qf' ? 'QF' : 'SF'} ${slot}`
+  const slotLabel = (round: 'qf' | 'sf' | 'final', slot: number) => {
+    if (round === 'final') return 'Final'
+    if (round === 'sf') return `SF ${slot}`
+    return `${slot <= 2 ? 'Left' : 'Right'} · QF ${slot}`
+  }
 
   if (fxLoading) {
     return (
@@ -78,14 +95,31 @@ export function BracketPage() {
               qualify for the knockout ({TOURNAMENT_STRUCTURE.groupsSummary} → eight qualifiers).
             </p>
             <p>
-              <span className="text-foreground font-medium">Then a fresh draw</span> is made for each knockout round
-              (quarters, semis, final). The bracket here tracks those matchups — pairings are set after each draw, not
-              by a fixed “1st in Group A vs …” tree.
+              <span className="text-foreground font-medium">Then a live playoff draw</span> puts the eight
+              into two bracket halves. As each name lands, the public bracket fills in.
             </p>
           </CardContent>
         </Card>
 
-        {!hasDrawContent && (
+        {drawLive && (
+          <div
+            className="rounded-xl border px-4 py-3 flex gap-3"
+            style={{
+              borderColor: 'oklch(0.80 0.14 72 / 0.45)',
+              backgroundColor: 'oklch(0.80 0.14 72 / 0.12)',
+            }}
+          >
+            <Trophy className="h-5 w-5 shrink-0 mt-0.5" style={{ color: 'oklch(0.80 0.14 72)' }} />
+            <div>
+              <p className="text-sm font-semibold text-foreground">Live playoff draw</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                Names are landing on the two halves now. Refresh to see the latest slots.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {!hasDrawContent && !drawLive && (
           <div
             className="rounded-xl border px-4 py-3 flex gap-3"
             style={{
@@ -142,6 +176,18 @@ export function BracketPage() {
           </CardContent>
         </Card>
       </div>
+
+      {(hasDrawContent || drawLive) && (
+        <div className="px-4">
+          <h2 className="text-sm font-bold uppercase tracking-wide text-muted-foreground mb-3">
+            Two halves
+          </h2>
+          <PlayoffHalvesBoard
+            slotPlayers={slotPlayers}
+            highlightKey={playoff?.draw.last_assigned_slot}
+          />
+        </div>
+      )}
 
       <div className="px-4">
         <h2 className="text-sm font-bold uppercase tracking-wide text-muted-foreground mb-3">Draw &amp; results</h2>

@@ -19,6 +19,17 @@ import type {
   TourScrapSource,
 } from '@/lib/types'
 import {
+  drawComplete,
+  emptySlots,
+  fieldIsValid,
+  isPlayoffSlotKey,
+  qfSlotFromKey,
+  remainingPlayers,
+  type PlayoffDraw,
+  type PlayoffEntry,
+  type PlayoffSlotKey,
+} from '@/lib/playoff-draw'
+import {
   mapProfile,
   mapSeason,
   mapGroup,
@@ -45,6 +56,8 @@ import {
   mapTourChumpsPick,
   mapTourPlayerDayHandicap,
   mapTourScrapbookEntry,
+  mapPlayoffDraw,
+  mapPlayoffEntry,
 } from '@/lib/supabase/mappers'
 
 function throwOnErr<T>(hint: string, res: { data: T | null; error: { message: string } | null }): T {
@@ -1359,6 +1372,196 @@ export async function updateKnockoutFixture(
 export async function deleteKnockoutFixture(id: string) {
   const res = await supabase.from('knockout_fixtures').delete().eq('id', id)
   if (res.error) throw new Error(res.error.message)
+}
+
+export interface PlayoffDrawBundle {
+  draw: PlayoffDraw
+  entries: PlayoffEntry[]
+}
+
+export async function fetchPlayoffDrawForSeason(seasonId: string): Promise<PlayoffDrawBundle | null> {
+  const res = await supabase.from('playoff_draws').select('*').eq('season_id', seasonId).maybeSingle()
+  if (res.error) throw new Error(res.error.message)
+  if (!res.data) return null
+  const draw = mapPlayoffDraw(res.data as Record<string, unknown>)
+  const ent = await supabase.from('playoff_entries').select('*').eq('draw_id', draw.id)
+  if (ent.error) throw new Error(ent.error.message)
+  return {
+    draw,
+    entries: (ent.data as Record<string, unknown>[]).map(mapPlayoffEntry),
+  }
+}
+
+async function loadPlayoffBundle(drawId: string): Promise<PlayoffDrawBundle> {
+  const res = await supabase.from('playoff_draws').select('*').eq('id', drawId).single()
+  const draw = mapPlayoffDraw(throwOnErr('loadPlayoffBundle', res) as unknown as Record<string, unknown>)
+  const ent = await supabase.from('playoff_entries').select('*').eq('draw_id', drawId)
+  if (ent.error) throw new Error(ent.error.message)
+  return {
+    draw,
+    entries: (ent.data as Record<string, unknown>[]).map(mapPlayoffEntry),
+  }
+}
+
+async function touchPlayoffDraw(drawId: string, patch: Record<string, unknown>): Promise<PlayoffDraw> {
+  const res = await supabase
+    .from('playoff_draws')
+    .update({ ...patch, updated_at: new Date().toISOString() })
+    .eq('id', drawId)
+    .select('*')
+    .single()
+  return mapPlayoffDraw(throwOnErr('touchPlayoffDraw', res) as unknown as Record<string, unknown>)
+}
+
+async function qfHasResults(seasonId: string): Promise<boolean> {
+  const rows = await fetchKnockoutForSeason(seasonId)
+  return rows.some((f) => f.round === 'qf' && f.result)
+}
+
+export async function ensureKnockoutTree(seasonId: string) {
+  const existing = await fetchKnockoutForSeason(seasonId)
+  const needed: { round: KnockoutRound; slots: number[] }[] = [
+    { round: 'qf', slots: [1, 2, 3, 4] },
+    { round: 'sf', slots: [1, 2] },
+    { round: 'final', slots: [1] },
+  ]
+  for (const { round, slots } of needed) {
+    for (const slot_index of slots) {
+      if (existing.some((f) => f.round === round && f.slot_index === slot_index)) continue
+      await insertKnockoutFixture({ season_id: seasonId, round, slot_index })
+    }
+  }
+}
+
+async function assignSlotToKnockout(seasonId: string, slotKey: PlayoffSlotKey, playerId: string) {
+  const { slot_index, seat } = qfSlotFromKey(slotKey)
+  const existing = await fetchKnockoutForSeason(seasonId)
+  const fx = existing.find((f) => f.round === 'qf' && f.slot_index === slot_index)
+  if (fx?.result) throw new Error('That quarter-final already has a result. Reset the knockout first.')
+  const patch = seat === 'a' ? { player_a_id: playerId } : { player_b_id: playerId }
+  if (!fx) {
+    await insertKnockoutFixture({ season_id: seasonId, round: 'qf', slot_index, ...patch })
+    return
+  }
+  await updateKnockoutFixture(fx.id, patch)
+}
+
+async function clearQfPlayers(seasonId: string) {
+  const existing = await fetchKnockoutForSeason(seasonId)
+  for (const f of existing.filter((x) => x.round === 'qf')) {
+    if (f.result) {
+      throw new Error('Quarter-finals already have results. Clear those on Knockout matchups first.')
+    }
+    await updateKnockoutFixture(f.id, { player_a_id: null, player_b_id: null })
+  }
+}
+
+export async function savePlayoffSetup(seasonId: string, playerIds: string[]): Promise<PlayoffDrawBundle> {
+  const err = fieldIsValid(playerIds)
+  if (err) throw new Error(err)
+  const current = await fetchPlayoffDrawForSeason(seasonId)
+  if (current && current.draw.status !== 'setup') {
+    throw new Error('The draw has already started. Reset it to change the field.')
+  }
+  let draw: PlayoffDraw
+  if (current) {
+    const del = await supabase.from('playoff_entries').delete().eq('draw_id', current.draw.id)
+    if (del.error) throw new Error(del.error.message)
+    draw = await touchPlayoffDraw(current.draw.id, {
+      status: 'setup',
+      phase: 'setup',
+      current_spinner_id: null,
+      last_assigned_slot: null,
+    })
+  } else {
+    const ins = await supabase
+      .from('playoff_draws')
+      .insert({ season_id: seasonId, status: 'setup', phase: 'setup' })
+      .select('*')
+      .single()
+    draw = mapPlayoffDraw(throwOnErr('savePlayoffSetup', ins) as unknown as Record<string, unknown>)
+  }
+  const rows = playerIds.map((player_id) => ({
+    draw_id: draw.id,
+    player_id,
+    slot_key: null,
+    drawn_at: null,
+  }))
+  const ent = await supabase.from('playoff_entries').insert(rows).select('*')
+  return {
+    draw,
+    entries: (throwOnErr('savePlayoffSetup entries', ent) as unknown as Record<string, unknown>[]).map(
+      mapPlayoffEntry,
+    ),
+  }
+}
+
+export async function pickPlayoffSpinner(drawId: string, playerId: string): Promise<PlayoffDrawBundle> {
+  const bundle = await loadPlayoffBundle(drawId)
+  const rem = remainingPlayers(bundle.entries)
+  if (!rem.some((e) => e.player_id === playerId)) {
+    throw new Error('That player is not waiting to draw.')
+  }
+  if (await qfHasResults(bundle.draw.season_id)) {
+    throw new Error('Quarter-finals already have results. Clear those on Knockout matchups first.')
+  }
+  await ensureKnockoutTree(bundle.draw.season_id)
+  const draw = await touchPlayoffDraw(drawId, {
+    status: 'drawing',
+    phase: 'await_spin',
+    current_spinner_id: playerId,
+  })
+  return { draw, entries: bundle.entries }
+}
+
+export async function spinPlayoffWheel(drawId: string, slotKey: PlayoffSlotKey): Promise<PlayoffDrawBundle> {
+  if (!isPlayoffSlotKey(slotKey)) throw new Error('Invalid slot.')
+  const bundle = await loadPlayoffBundle(drawId)
+  const spinnerId = bundle.draw.current_spinner_id
+  if (!spinnerId) throw new Error('No spinner selected.')
+  const entry = bundle.entries.find((e) => e.player_id === spinnerId)
+  if (!entry || entry.slot_key) throw new Error('This player has already been placed.')
+  const legal = emptySlots(bundle.entries)
+  if (!legal.some((s) => s.key === slotKey)) {
+    throw new Error('That slot is already taken.')
+  }
+  const now = new Date().toISOString()
+  const upd = await supabase
+    .from('playoff_entries')
+    .update({ slot_key: slotKey, drawn_at: now })
+    .eq('id', entry.id)
+    .select('*')
+    .single()
+  if (upd.error) throw new Error(upd.error.message)
+  await assignSlotToKnockout(bundle.draw.season_id, slotKey, spinnerId)
+  const entries = bundle.entries.map((e) =>
+    e.id === entry.id ? mapPlayoffEntry(upd.data as Record<string, unknown>) : e,
+  )
+  const done = drawComplete(entries)
+  const draw = await touchPlayoffDraw(drawId, {
+    status: done ? 'complete' : 'drawing',
+    phase: done ? 'complete' : 'revealed',
+    last_assigned_slot: slotKey,
+    current_spinner_id: done ? null : spinnerId,
+  })
+  if (done) {
+    await insertActivityFeed({
+      season_id: bundle.draw.season_id,
+      type: 'knockout',
+      actor_id: spinnerId,
+      description: 'The playoff draw is in — quarter-finals are set.',
+      metadata: { draw_id: drawId },
+    })
+  }
+  return { draw, entries }
+}
+
+export async function resetPlayoffDraw(seasonId: string): Promise<void> {
+  await clearQfPlayers(seasonId)
+  const current = await fetchPlayoffDrawForSeason(seasonId)
+  if (!current) return
+  const del = await supabase.from('playoff_draws').delete().eq('id', current.draw.id)
+  if (del.error) throw new Error(del.error.message)
 }
 
 export async function updateSeason(

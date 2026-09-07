@@ -179,6 +179,14 @@ export interface KnockoutFixture {
   created_at: string
 }
 
+export type {
+  PlayoffDraw,
+  PlayoffDrawPhase,
+  PlayoffDrawStatus,
+  PlayoffEntry,
+  PlayoffSlotKey,
+} from '@/lib/playoff-draw'
+
 // ─── Wagers ────────────────────────────────────────────────────────────────────
 
 export type WagerStatus =

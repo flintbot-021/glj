@@ -31,6 +31,7 @@ import { AdminRtdGroupsPage } from '@/pages/admin-rtd-groups-page'
 import { AdminRtdBonusPage } from '@/pages/admin-rtd-bonus-page'
 import { AdminPlayersPage } from '@/pages/admin-players-page'
 import { AdminRtdKnockoutPage } from '@/pages/admin-rtd-knockout-page'
+import { AdminRtdPlayoffsPage } from '@/pages/admin-rtd-playoffs-page'
 import { AuthPage } from '@/pages/auth-page'
 
 export function App() {
@@ -80,6 +81,7 @@ export function App() {
                   <Route path="/admin/rtd/groups" element={<AdminRtdGroupsPage />} />
                   <Route path="/admin/rtd/bonus" element={<AdminRtdBonusPage />} />
                   <Route path="/admin/rtd/players" element={<AdminPlayersPage />} />
+                  <Route path="/admin/rtd/playoffs" element={<AdminRtdPlayoffsPage />} />
                   <Route path="/admin/rtd/knockout" element={<AdminRtdKnockoutPage />} />
                   <Route path="/admin/players" element={<Navigate to="/admin/rtd/players" replace />} />
                   <Route path="/admin/sub-seasons" element={<Navigate to="/admin/rtd/season" replace />} />

@@ -73,6 +73,11 @@ import {
   insertKnockoutFixture,
   updateKnockoutFixture,
   deleteKnockoutFixture,
+  fetchPlayoffDrawForSeason,
+  savePlayoffSetup,
+  pickPlayoffSpinner,
+  spinPlayoffWheel,
+  resetPlayoffDraw,
   seedTourHolesIfEmpty,
   upsertTourHole,
   insertTourEvent,
@@ -541,6 +546,68 @@ export function useKnockoutBracket() {
       }))
     },
     enabled: !!season?.id,
+  })
+}
+
+export function usePlayoffDraw() {
+  const { data: season } = useActiveSeason()
+  return useQuery({
+    queryKey: ['playoff-draw', season?.id],
+    queryFn: async () => {
+      const bundle = await fetchPlayoffDrawForSeason(season!.id)
+      if (!bundle) return null
+      const ids = bundle.entries.map((e) => e.player_id)
+      if (bundle.draw.current_spinner_id) ids.push(bundle.draw.current_spinner_id)
+      const map = await fetchProfileMap(ids)
+      return {
+        draw: bundle.draw,
+        entries: bundle.entries.map((e) => ({
+          ...e,
+          player: map.get(e.player_id),
+        })),
+      }
+    },
+    enabled: !!season?.id,
+  })
+}
+
+function invalidatePlayoffQueries(qc: QueryClient) {
+  qc.invalidateQueries({ queryKey: ['playoff-draw'] })
+  qc.invalidateQueries({ queryKey: ['knockout-bracket'] })
+  qc.invalidateQueries({ queryKey: ['activity-feed'] })
+}
+
+export function useSavePlayoffSetup() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (args: { seasonId: string; playerIds: string[] }) =>
+      savePlayoffSetup(args.seasonId, args.playerIds),
+    onSuccess: () => invalidatePlayoffQueries(qc),
+  })
+}
+
+export function usePickPlayoffSpinner() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (args: { drawId: string; playerId: string }) => pickPlayoffSpinner(args.drawId, args.playerId),
+    onSuccess: () => invalidatePlayoffQueries(qc),
+  })
+}
+
+export function useSpinPlayoffWheel() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (args: { drawId: string; slotKey: Parameters<typeof spinPlayoffWheel>[1] }) =>
+      spinPlayoffWheel(args.drawId, args.slotKey),
+    onSuccess: () => invalidatePlayoffQueries(qc),
+  })
+}
+
+export function useResetPlayoffDraw() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (seasonId: string) => resetPlayoffDraw(seasonId),
+    onSuccess: () => invalidatePlayoffQueries(qc),
   })
 }
 
@@ -1516,6 +1583,7 @@ export function useSaveTourHoles() {
 function invalidateTourMatchSettle(qc: QueryClient, matchId: string) {
   qc.invalidateQueries({ queryKey: ['tour-match-bundle', matchId] })
   qc.invalidateQueries({ queryKey: ['tour-board'] })
+  qc.refetchQueries({ queryKey: ['tour-board'] })
   qc.invalidateQueries({ queryKey: ['tour-day-matches'] })
   qc.invalidateQueries({ queryKey: ['wallet-balance'] })
   qc.invalidateQueries({ queryKey: ['wallet-transactions'] })
