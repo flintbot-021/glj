@@ -6,6 +6,7 @@ import { useUIStore } from '@/stores/ui-store'
 import { useUnreadCount } from '@/hooks/use-data'
 import { formatWalletBalance } from '@/lib/format'
 import { useNavigate } from 'react-router'
+import { ScrapbookButton } from '@/components/tour/scrapbook-button'
 
 const GREEN      = 'oklch(0.22 0.068 157)'
 const GREEN_DARK = 'oklch(0.17 0.055 157)'
@@ -51,6 +52,7 @@ export function Header() {
             </span>
           </div>
         )}
+        <ScrapbookButton />
 
         <Button
           variant="ghost"

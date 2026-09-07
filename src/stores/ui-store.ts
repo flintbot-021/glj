@@ -11,6 +11,10 @@ interface UIState {
   notificationsOpen: boolean
   openNotifications: () => void
   closeNotifications: () => void
+
+  scrapbookOpen: boolean
+  openScrapbook: () => void
+  closeScrapbook: () => void
 }
 
 export const useUIStore = create<UIState>((set) => ({
@@ -24,4 +28,8 @@ export const useUIStore = create<UIState>((set) => ({
   notificationsOpen: false,
   openNotifications: () => set({ notificationsOpen: true }),
   closeNotifications: () => set({ notificationsOpen: false }),
+
+  scrapbookOpen: false,
+  openScrapbook: () => set({ scrapbookOpen: true }),
+  closeScrapbook: () => set({ scrapbookOpen: false }),
 }))

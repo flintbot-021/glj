@@ -3,6 +3,7 @@ import { Header } from './header'
 import { BottomNav } from './bottom-nav'
 import { ScoreEntrySheet } from '@/components/scores/score-entry-sheet'
 import { NotificationCenter } from '@/components/notifications/notification-center'
+import { ScrapbookCenter } from '@/components/tour/scrapbook-center'
 
 export function AppShell() {
   const { pathname } = useLocation()
@@ -21,6 +22,7 @@ export function AppShell() {
       <BottomNav />
       <ScoreEntrySheet />
       <NotificationCenter />
+      <ScrapbookCenter />
     </div>
   )
 }

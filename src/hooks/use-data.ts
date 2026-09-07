@@ -97,6 +97,10 @@ import {
   clearTourMatchWager,
   confirmTourMatchCard,
   resetTourMatchCard,
+  fetchTourScrapbook,
+  insertTourScrapbook,
+  uploadTourScrapPhoto,
+  deleteTourScrapbook,
 } from '@/lib/supabase/api'
 import { loadTourBoard, loadTourMatchBundle, saveTourHolesAndRollup } from '@/lib/tour-board'
 import { champsPicksLocked } from '@/lib/tour-colors'
@@ -1182,6 +1186,7 @@ function invalidateTourAdminCaches(qc: QueryClient) {
     'tour-player-day-hc',
     'tour-board',
     'tour-match-bundle',
+    'tour-scrapbook',
   ] as const
   for (const p of prefixes) {
     qc.invalidateQueries({ queryKey: [p] })
@@ -1419,6 +1424,63 @@ export function useTourBoard() {
     queryKey: ['tour-board'],
     queryFn: loadTourBoard,
     refetchInterval: 8000,
+  })
+}
+
+export function useTourScrapbook(tourId: string | undefined) {
+  return useQuery({
+    queryKey: ['tour-scrapbook', tourId],
+    queryFn: async () => {
+      const entries = await fetchTourScrapbook(tourId!)
+      const authors = await fetchProfileMap(entries.map((e) => e.created_by))
+      return { entries, authors }
+    },
+    enabled: !!tourId,
+  })
+}
+
+export function useSaveTourScrapbook() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (payload: {
+      userId: string
+      blob: Blob
+      tour_id: string
+      match_id?: string | null
+      course_id?: string | null
+      day_number?: 1 | 2 | 3 | null
+      hole_number?: number | null
+      caption: string
+      source: Parameters<typeof insertTourScrapbook>[0]['source']
+      created_by: string
+    }) => {
+      const photo_path = await uploadTourScrapPhoto(payload.userId, payload.blob)
+      return insertTourScrapbook({
+        tour_id: payload.tour_id,
+        match_id: payload.match_id,
+        course_id: payload.course_id,
+        day_number: payload.day_number,
+        hole_number: payload.hole_number,
+        caption: payload.caption,
+        photo_path,
+        source: payload.source,
+        created_by: payload.created_by,
+      })
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['tour-scrapbook'] })
+    },
+  })
+}
+
+export function useDeleteTourScrapbook() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, photoPath }: { id: string; photoPath: string }) =>
+      deleteTourScrapbook(id, photoPath),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['tour-scrapbook'] })
+    },
   })
 }
 
