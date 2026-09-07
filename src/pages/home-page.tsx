@@ -12,6 +12,7 @@ import { useUnreadCount } from '@/hooks/use-data'
 import { formatWalletBalance } from '@/lib/format'
 import { profileDisplayName } from '@/lib/format'
 import { cn } from '@/lib/utils'
+import { ScrapbookButton } from '@/components/tour/scrapbook-button'
 
 type Tab = 'groups' | 'bonus'
 
@@ -63,19 +64,22 @@ export function HomePage() {
       >
         {/* Top bar — wallet + bell */}
         <div className="safe-top w-full flex items-center justify-between px-4 pt-3 pb-1">
-          {profile && (
-            <div
-              className="flex items-center gap-1.5 rounded-full px-3 py-1.5"
-              style={{ backgroundColor: GREEN_DARK }}
-            >
-              <span className="text-[11px] font-medium uppercase tracking-wide text-white/55">
-                Wallet
-              </span>
-              <span className="num text-sm font-semibold" style={{ color: GOLD }}>
-                {formatWalletBalance(profile.wallet_balance)}
-              </span>
-            </div>
-          )}
+          <div className="flex items-center gap-1">
+            {profile && (
+              <div
+                className="flex items-center gap-1.5 rounded-full px-3 py-1.5"
+                style={{ backgroundColor: GREEN_DARK }}
+              >
+                <span className="text-[11px] font-medium uppercase tracking-wide text-white/55">
+                  Wallet
+                </span>
+                <span className="num text-sm font-semibold" style={{ color: GOLD }}>
+                  {formatWalletBalance(profile.wallet_balance)}
+                </span>
+              </div>
+            )}
+            <ScrapbookButton />
+          </div>
 
           <Button
             variant="ghost"
@@ -160,6 +164,7 @@ export function HomePage() {
                 </span>
               </div>
             )}
+            <ScrapbookButton className="flex-shrink-0" />
 
             {/* Bell */}
             <Button

@@ -25,6 +25,8 @@ import type {
   TourChumpsPick,
   TourHoleScore,
   TourPlayerDayHandicap,
+  TourScrapbookEntry,
+  TourScrapSource,
 } from '@/lib/types'
 
 function num(v: unknown): number {
@@ -376,6 +378,24 @@ export function mapTourPlayerDayHandicap(r: Record<string, unknown>): TourPlayer
     tour_day_id: String(r.tour_day_id),
     tour_player_id: String(r.tour_player_id),
     course_handicap: num(r.course_handicap),
+    created_at: String(r.created_at),
+  }
+}
+
+export function mapTourScrapbookEntry(r: Record<string, unknown>, photoUrl: string): TourScrapbookEntry {
+  const path = String(r.photo_path)
+  return {
+    id: String(r.id),
+    tour_id: String(r.tour_id),
+    match_id: r.match_id != null ? String(r.match_id) : null,
+    course_id: r.course_id != null ? String(r.course_id) : null,
+    day_number: r.day_number == null ? null : (num(r.day_number) as 1 | 2 | 3),
+    hole_number: r.hole_number == null ? null : num(r.hole_number),
+    caption: r.caption != null ? String(r.caption) : '',
+    photo_path: path,
+    photo_url: photoUrl,
+    source: r.source as TourScrapSource,
+    created_by: String(r.created_by),
     created_at: String(r.created_at),
   }
 }

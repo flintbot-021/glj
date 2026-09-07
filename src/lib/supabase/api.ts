@@ -16,6 +16,7 @@ import type {
   TourMatchStatus,
   TourStatus,
   TourTeam,
+  TourScrapSource,
 } from '@/lib/types'
 import {
   mapProfile,
@@ -43,6 +44,7 @@ import {
   mapTourHoleScore,
   mapTourChumpsPick,
   mapTourPlayerDayHandicap,
+  mapTourScrapbookEntry,
 } from '@/lib/supabase/mappers'
 
 function throwOnErr<T>(hint: string, res: { data: T | null; error: { message: string } | null }): T {
@@ -1128,6 +1130,72 @@ export async function confirmTourMatchCard(matchId: string) {
 export async function resetTourMatchCard(matchId: string) {
   const res = await supabase.rpc('reset_tour_match_card', { p_match_id: matchId })
   return mapTourMatch(throwOnErr('resetTourMatchCard', res) as unknown as Record<string, unknown>)
+}
+
+const SCRAP_BUCKET = 'tour-scrapbook'
+
+function scrapPhotoUrl(path: string): string {
+  const { data } = supabase.storage.from(SCRAP_BUCKET).getPublicUrl(path)
+  return data.publicUrl
+}
+
+export async function fetchTourScrapbook(tourId: string) {
+  const res = await supabase
+    .from('tour_scrapbook')
+    .select('*')
+    .eq('tour_id', tourId)
+    .order('created_at', { ascending: false })
+  if (res.error) throw new Error(res.error.message)
+  return (res.data as Record<string, unknown>[]).map((row) =>
+    mapTourScrapbookEntry(row, scrapPhotoUrl(String(row.photo_path))),
+  )
+}
+
+export async function uploadTourScrapPhoto(userId: string, blob: Blob): Promise<string> {
+  const id = crypto.randomUUID()
+  const path = `${userId}/${id}.jpg`
+  const res = await supabase.storage.from(SCRAP_BUCKET).upload(path, blob, {
+    contentType: 'image/jpeg',
+    upsert: false,
+  })
+  if (res.error) throw new Error(res.error.message)
+  return path
+}
+
+export async function insertTourScrapbook(data: {
+  tour_id: string
+  match_id?: string | null
+  course_id?: string | null
+  day_number?: 1 | 2 | 3 | null
+  hole_number?: number | null
+  caption: string
+  photo_path: string
+  source: TourScrapSource
+  created_by: string
+}) {
+  const res = await supabase
+    .from('tour_scrapbook')
+    .insert({
+      tour_id: data.tour_id,
+      match_id: data.match_id ?? null,
+      course_id: data.course_id ?? null,
+      day_number: data.day_number ?? null,
+      hole_number: data.hole_number ?? null,
+      caption: data.caption.trim(),
+      photo_path: data.photo_path,
+      source: data.source,
+      created_by: data.created_by,
+    })
+    .select('*')
+    .single()
+  const row = throwOnErr('insertTourScrapbook', res) as Record<string, unknown>
+  return mapTourScrapbookEntry(row, scrapPhotoUrl(String(row.photo_path)))
+}
+
+export async function deleteTourScrapbook(id: string, photoPath: string) {
+  const del = await supabase.from('tour_scrapbook').delete().eq('id', id)
+  if (del.error) throw new Error(del.error.message)
+  await supabase.storage.from(SCRAP_BUCKET).remove([photoPath])
 }
 
 // ─── Admin (RTD) ─────────────────────────────────────────────────────────────

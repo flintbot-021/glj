@@ -55,6 +55,7 @@ export interface TourMatchView {
   matchNumber: number
   dayNumber: number
   dayId: string
+  tourId: string
   format: TourFormat
   course: TourCourse | null
   playersA: TourMatchPlayerView[]
@@ -217,6 +218,7 @@ export async function loadTourBoard(): Promise<TourBoard | null> {
         matchNumber: i + 1,
         dayNumber: day.day_number,
         dayId: day.id,
+        tourId: event.id,
         format,
         course,
         playersA,
@@ -365,6 +367,7 @@ export async function loadTourMatchBundle(matchId: string): Promise<TourMatchVie
     matchNumber: matchNumber || 1,
     dayNumber: dayRow.day_number,
     dayId: dayRow.id,
+    tourId: event?.id ?? '',
     format,
     course,
     playersA,

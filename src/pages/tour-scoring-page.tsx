@@ -5,9 +5,20 @@ import {
   useConfirmTourMatchCard,
   useResetTourMatchCard,
   useSaveTourHoles,
+  useSaveTourScrapbook,
   useSetTourMatchWager,
   useTourMatchBundle,
+  useTourScrapbook,
 } from '@/hooks/use-data'
+import { Polaroid } from '@/components/tour/polaroid'
+import { ScrapCaptureSheet } from '@/components/tour/scrap-capture-sheet'
+import {
+  loadScrapPromptState,
+  markScrapPromptDone,
+  promptForHole,
+  scrapPromptPlan,
+  type ScrapHolePrompt,
+} from '@/lib/tour-scrapbook'
 import { useAuthStore } from '@/stores/auth-store'
 import { HoleStrip } from '@/components/tour/hole-strip'
 import { ScoreMark } from '@/components/tour/score-mark'
@@ -22,7 +33,7 @@ import {
 import { TEAM_BLUE, TEAM_RED, TOUR_GOLD, TOUR_GOLD_FG, TOUR_GREEN } from '@/lib/tour-colors'
 import { profileFirstName } from '@/lib/format'
 import { cn } from '@/lib/utils'
-import { ChevronLeft, ChevronRight, RotateCcw } from 'lucide-react'
+import { Camera, ChevronLeft, ChevronRight, ImagePlus, RotateCcw } from 'lucide-react'
 import type { TourMatchPlayerView, TourMatchView } from '@/lib/tour-board'
 import type { TourHole, TourHoleScore, TourTeam } from '@/lib/types'
 
@@ -52,6 +63,10 @@ export function TourScoringPage() {
   const [forceConfirm, setForceConfirm] = useState(false)
   const persistTimers = useRef(new Map<string, number>())
   const started = useRef(false)
+  const saveScrap = useSaveTourScrapbook()
+  const [scrapPrompt, setScrapPrompt] = useState<ScrapHolePrompt | null>(null)
+  const [scrapError, setScrapError] = useState('')
+  const plan = useMemo(() => (matchId ? scrapPromptPlan(matchId) : []), [matchId])
 
   useEffect(() => {
     started.current = false
@@ -62,6 +77,8 @@ export function TourScoringPage() {
     setWagerError('')
     setConfirmError('')
     setResetError('')
+    setScrapPrompt(null)
+    setScrapError('')
   }, [matchId])
 
   useEffect(() => {
@@ -154,7 +171,40 @@ export function TourScoringPage() {
     !bundle.match.card_confirmed_at &&
     !!liveComputed?.decided &&
     cardComplete &&
-    (forceConfirm || currentHole >= 18)
+    forceConfirm
+
+  useEffect(() => {
+    if (
+      viewOnly ||
+      !matchId ||
+      !profile ||
+      showWagerGate ||
+      showConfirm ||
+      !!bundle?.match.card_confirmed_at
+    ) {
+      return
+    }
+    const hit = promptForHole(plan, currentHole)
+    if (!hit) {
+      setScrapPrompt(null)
+      return
+    }
+    if (loadScrapPromptState(matchId, profile.id).doneHoles.includes(hit.hole)) {
+      setScrapPrompt(null)
+      return
+    }
+    const t = window.setTimeout(() => setScrapPrompt(hit), 550)
+    return () => window.clearTimeout(t)
+  }, [
+    currentHole,
+    viewOnly,
+    matchId,
+    profile,
+    plan,
+    showWagerGate,
+    showConfirm,
+    bundle?.match.card_confirmed_at,
+  ])
 
   const saveCtx = () => {
     if (!bundle || !matchId) return null
@@ -512,6 +562,49 @@ export function TourScoringPage() {
           {currentHole < 18 && <ChevronRight className="h-4 w-4" />}
         </button>
       </footer>
+
+      {profile && matchId && bundle.tourId ? (
+        <ScrapCaptureSheet
+          open={scrapPrompt != null}
+          source={scrapPrompt?.source ?? 'people'}
+          hole={scrapPrompt?.hole ?? null}
+          courseName={bundle.course?.name}
+          busy={saveScrap.isPending}
+          error={scrapError}
+          tone="score"
+          onSkip={() => {
+            if (scrapPrompt) markScrapPromptDone(matchId, profile.id, scrapPrompt.hole)
+            setScrapError('')
+            setScrapPrompt(null)
+          }}
+          onSubmit={(blob, caption) => {
+            if (!scrapPrompt) return
+            setScrapError('')
+            saveScrap.mutate(
+              {
+                userId: profile.id,
+                blob,
+                tour_id: bundle.tourId,
+                match_id: matchId,
+                course_id: bundle.course?.id ?? null,
+                day_number: bundle.dayNumber as 1 | 2 | 3,
+                hole_number: scrapPrompt.hole,
+                caption,
+                source: scrapPrompt.source,
+                created_by: profile.id,
+              },
+              {
+                onSuccess: () => {
+                  markScrapPromptDone(matchId, profile.id, scrapPrompt.hole)
+                  setScrapPrompt(null)
+                },
+                onError: (e) =>
+                  setScrapError(e instanceof Error ? e.message : 'Could not save that snap'),
+              },
+            )
+          }}
+        />
+      ) : null}
     </div>
   )
 }
@@ -660,11 +753,17 @@ function ConfirmCardScreen({
   onBack: () => void
   onConfirm: () => void
 }) {
+  const profile = useAuthStore((s) => s.profile)
+  const scrap = useTourScrapbook(bundle.tourId || undefined)
+  const saveScrap = useSaveTourScrapbook()
+  const [adding, setAdding] = useState<'camera' | 'library' | null>(null)
+  const [scrapError, setScrapError] = useState('')
   const players = [...bundle.playersA, ...bundle.playersB]
   const half = computed.points93 === computed.points91
   const wager = bundle.match.wager_amount
   const winner =
     half ? null : computed.points93 > computed.points91 ? '93s' : '91s'
+  const snaps = (scrap.data?.entries ?? []).filter((e) => e.match_id === bundle.match.id)
 
   const grossTotal = (playerId: string) =>
     overlayScores
@@ -686,7 +785,7 @@ function ConfirmCardScreen({
           type="button"
           className="size-9 rounded-full flex items-center justify-center text-white/70"
           onClick={onBack}
-          aria-label="Back"
+          aria-label="Back to scoring"
         >
           <ChevronLeft className="h-5 w-5" />
         </button>
@@ -743,6 +842,57 @@ function ConfirmCardScreen({
           </div>
         )}
 
+        <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">
+          Round snaps
+        </p>
+        {snaps.length === 0 ? (
+          <p className="text-sm text-muted-foreground mb-3">
+            Nothing in the book yet — take another or upload one before you lock the card.
+          </p>
+        ) : (
+          <div className="flex gap-3 overflow-x-auto pb-2 mb-3 -mx-1 px-1">
+            {snaps.map((entry) => (
+              <Polaroid
+                key={entry.id}
+                entry={entry}
+                courseName={bundle.course?.name}
+                authorName={
+                  scrap.data?.authors.get(entry.created_by)
+                    ? profileFirstName(scrap.data.authors.get(entry.created_by)!)
+                    : undefined
+                }
+                rotate={0}
+              />
+            ))}
+          </div>
+        )}
+        <div className="grid grid-cols-2 gap-2 mb-4">
+          <button
+            type="button"
+            disabled={busy || saveScrap.isPending || !profile}
+            onClick={() => {
+              setScrapError('')
+              setAdding('camera')
+            }}
+            className="h-12 rounded-xl text-sm font-bold flex items-center justify-center gap-1.5 border border-border"
+          >
+            <Camera className="h-4 w-4" />
+            Take another
+          </button>
+          <button
+            type="button"
+            disabled={busy || saveScrap.isPending || !profile}
+            onClick={() => {
+              setScrapError('')
+              setAdding('library')
+            }}
+            className="h-12 rounded-xl text-sm font-bold flex items-center justify-center gap-1.5 border border-border"
+          >
+            <ImagePlus className="h-4 w-4" />
+            Upload more
+          </button>
+        </div>
+
         {error && <p className="text-sm text-destructive mb-3">{error}</p>}
 
         <button
@@ -754,7 +904,56 @@ function ConfirmCardScreen({
         >
           {busy ? 'Confirming…' : wager != null ? 'Confirm & settle wager' : 'Confirm card'}
         </button>
+        <button
+          type="button"
+          disabled={busy}
+          className="w-full h-11 rounded-xl text-sm font-bold text-muted-foreground mt-1"
+          onClick={onBack}
+        >
+          Back to scoring
+        </button>
       </div>
+
+      {profile ? (
+        <ScrapCaptureSheet
+          open={adding != null}
+          source="extra"
+          hole={18}
+          courseName={bundle.course?.name}
+          busy={saveScrap.isPending}
+          error={scrapError}
+          tone="page"
+          allowLibrary
+          dismissLabel="Close"
+          startWith={adding ?? 'camera'}
+          onSkip={() => {
+            setAdding(null)
+            setScrapError('')
+          }}
+          onSubmit={(blob, caption) => {
+            setScrapError('')
+            saveScrap.mutate(
+              {
+                userId: profile.id,
+                blob,
+                tour_id: bundle.tourId,
+                match_id: bundle.match.id,
+                course_id: bundle.course?.id ?? null,
+                day_number: bundle.dayNumber as 1 | 2 | 3,
+                hole_number: 18,
+                caption,
+                source: 'extra',
+                created_by: profile.id,
+              },
+              {
+                onSuccess: () => setAdding(null),
+                onError: (e) =>
+                  setScrapError(e instanceof Error ? e.message : 'Could not save that snap'),
+              },
+            )
+          }}
+        />
+      ) : null}
     </div>
   )
 }

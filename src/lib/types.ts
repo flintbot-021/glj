@@ -384,6 +384,23 @@ export interface TourHoleScore {
   created_at: string
 }
 
+export type TourScrapSource = 'people' | 'scene' | 'detail' | 'extra'
+
+export interface TourScrapbookEntry {
+  id: string
+  tour_id: string
+  match_id: string | null
+  course_id: string | null
+  day_number: 1 | 2 | 3 | null
+  hole_number: number | null
+  caption: string
+  photo_path: string
+  photo_url: string
+  source: TourScrapSource
+  created_by: string
+  created_at: string
+}
+
 export interface TourChumpsPick {
   id: string
   tour_id: string
