@@ -325,7 +325,7 @@ export interface TourHole {
   hole_number: number
   par: number
   stroke_index: number
-  /** Optional yardage shown in admin / yardage book */
+  /** Optional hole length in metres (DB column is still `yardage`). */
   yardage?: number | null
   created_at: string
 }
@@ -357,6 +357,11 @@ export interface TourMatch {
   status: TourMatchStatus
   team_a_points: number
   team_b_points: number
+  /** Stake per losing player; winners each receive the same. Null = no wager. */
+  wager_amount?: number | null
+  wager_created_by?: string | null
+  card_confirmed_at?: string | null
+  wager_settled_at?: string | null
   created_at: string
 }
 

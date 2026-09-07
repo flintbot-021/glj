@@ -440,6 +440,16 @@ export async function fetchTourChumpsPicks(tourId: string) {
   return (res.data as Record<string, unknown>[]).map(mapTourChumpsPick)
 }
 
+/** Who has submitted (no pick details). Safe to show before reveal. */
+export async function fetchTourChampsSubmittedPickers(tourId: string) {
+  const res = await supabase.rpc('tour_champs_submitted_pickers', { p_tour_id: tourId })
+  if (res.error) throw new Error(res.error.message)
+  return (res.data as { picker_id: string; submitted_at: string }[] | null)?.map((r) => ({
+    picker_id: String(r.picker_id),
+    submitted_at: String(r.submitted_at),
+  })) ?? []
+}
+
 export async function fetchTourMatchesForDays(dayIds: string[]) {
   if (dayIds.length === 0) return []
   const res = await supabase.from('tour_matches').select('*').in('tour_day_id', dayIds).order('created_at')
@@ -1090,6 +1100,29 @@ export async function replaceTourMatchPlayers(
     .from('tour_match_players')
     .insert(rows.map((r) => ({ match_id: matchId, ...r })))
   if (ins.error) throw new Error(ins.error.message)
+}
+
+export async function setTourMatchWager(matchId: string, amount: number) {
+  const res = await supabase.rpc('set_tour_match_wager', {
+    p_match_id: matchId,
+    p_amount: amount,
+  })
+  return mapTourMatch(throwOnErr('setTourMatchWager', res) as unknown as Record<string, unknown>)
+}
+
+export async function clearTourMatchWager(matchId: string) {
+  const res = await supabase.rpc('clear_tour_match_wager', { p_match_id: matchId })
+  return mapTourMatch(throwOnErr('clearTourMatchWager', res) as unknown as Record<string, unknown>)
+}
+
+export async function confirmTourMatchCard(matchId: string) {
+  const res = await supabase.rpc('confirm_tour_match_card', { p_match_id: matchId })
+  return mapTourMatch(throwOnErr('confirmTourMatchCard', res) as unknown as Record<string, unknown>)
+}
+
+export async function resetTourMatchCard(matchId: string) {
+  const res = await supabase.rpc('reset_tour_match_card', { p_match_id: matchId })
+  return mapTourMatch(throwOnErr('resetTourMatchCard', res) as unknown as Record<string, unknown>)
 }
 
 // ─── Admin (RTD) ─────────────────────────────────────────────────────────────

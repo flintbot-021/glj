@@ -56,7 +56,8 @@ export function MatchHoleBar({
   className?: string
 }) {
   const empty = tone === 'dark' ? 'rgba(255,255,255,0.16)' : 'oklch(0.90 0.01 157)'
-  const dash = tone === 'dark' ? 'border-white/30' : 'border-border'
+  const pendingFill = tone === 'dark' ? 'rgba(255,255,255,0.08)' : 'oklch(0.93 0.01 157)'
+  const pendingBorder = tone === 'dark' ? 'rgba(255,255,255,0.12)' : 'oklch(0.86 0.01 157)'
   const ring = tone === 'dark' ? 'ring-white' : 'ring-foreground/40'
   return (
     <div className={cn('flex gap-[2px] h-3', className)}>
@@ -73,21 +74,25 @@ export function MatchHoleBar({
               aria-label={`Hole ${n}`}
               className={cn(
                 'h-full flex-1 min-w-0 rounded-[2px]',
-                pending && `border border-dashed ${dash} bg-transparent`,
                 active && `ring-1 ${ring} ring-offset-1 ring-offset-transparent`,
               )}
-              style={pending ? undefined : { background: holeFill(hole, empty) }}
+              style={
+                pending
+                  ? { background: pendingFill, border: `1px solid ${pendingBorder}` }
+                  : { background: holeFill(hole, empty) }
+              }
             />
           )
         }
         return (
           <div
             key={n}
-            className={cn(
-              'h-full flex-1 min-w-0 rounded-[2px]',
-              pending && `border border-dashed ${dash} bg-transparent`,
-            )}
-            style={pending ? undefined : { background: holeFill(hole, empty) }}
+            className="h-full flex-1 min-w-0 rounded-[2px]"
+            style={
+              pending
+                ? { background: pendingFill, border: `1px solid ${pendingBorder}` }
+                : { background: holeFill(hole, empty) }
+            }
           />
         )
       })}

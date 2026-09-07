@@ -137,7 +137,11 @@ export function AdminTourDaysPage() {
                   <Label>Format</Label>
                   <Select value={addFormat} onValueChange={(v) => v != null && setAddFormat(v)}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Format…" />
+                      <SelectValue placeholder="Format…">
+                        {addFormat
+                          ? formatList.find((f) => f.id === addFormat)?.name ?? 'Format…'
+                          : undefined}
+                      </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
                       {formatList.map((f) => (
@@ -246,6 +250,7 @@ function DayRow({
   const [played, setPlayed] = useState(day.played_at?.slice(0, 10) ?? '')
   const courseLabel =
     courseId === COURSE_TBC ? 'Course TBC' : courses.find((c) => c.id === courseId)?.name ?? 'Course TBC'
+  const formatLabel = formats.find((f) => f.id === formatId)?.name ?? 'Format…'
 
   return (
     <TableRow>
@@ -268,7 +273,7 @@ function DayRow({
       <TableCell>
         <Select value={formatId} onValueChange={(v) => v != null && setFormatId(v)}>
           <SelectTrigger size="sm" className="w-[220px]">
-            <SelectValue />
+            <SelectValue>{formatLabel}</SelectValue>
           </SelectTrigger>
           <SelectContent>
             {formats.map((f) => (

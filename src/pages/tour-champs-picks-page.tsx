@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { useSaveTourChampsPick, useTourBoard } from '@/hooks/use-data'
+import { useChampsCountdown } from '@/hooks/use-champs-countdown'
 import { useAuthStore } from '@/stores/auth-store'
 import { PlayerAvatar } from '@/components/ui/player-avatar'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -10,8 +11,6 @@ import {
   TOUR_GOLD,
   TOUR_GOLD_FG,
   TOUR_GREEN,
-  champsDeadlineIso,
-  champsPicksLocked,
 } from '@/lib/tour-colors'
 import {
   CHAMPS_PICK_COUNT,
@@ -20,7 +19,7 @@ import {
 } from '@/lib/tour-scoring'
 import { profileDisplayName, profileFirstName } from '@/lib/format'
 import { cn } from '@/lib/utils'
-import { Check, Plus, Star } from 'lucide-react'
+import { Check, Lock, Plus, Star } from 'lucide-react'
 import type { TourRosterPlayer } from '@/lib/tour-board'
 
 export function TourChampsPicksPage() {
@@ -37,15 +36,9 @@ export function TourChampsPicksPage() {
   const [hydrated, setHydrated] = useState(false)
   const [error, setError] = useState('')
 
-  const locked = champsPicksLocked(board?.event.champs_deadline)
-  const deadlineLabel = new Date(champsDeadlineIso(board?.event.champs_deadline)).toLocaleString('en-GB', {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-    hour: '2-digit',
-    minute: '2-digit',
-    timeZone: 'Africa/Johannesburg',
-  })
+  const { locked: isLocked, label: countdownLabel, deadlineLabel } = useChampsCountdown(
+    board?.event.champs_deadline,
+  )
 
   useEffect(() => {
     if (!existing || hydrated) return
@@ -71,7 +64,7 @@ export function TourChampsPicksPage() {
   const metFloor = full && used >= CHAMPS_RANK_BUDGET
 
   const toggle = (id: string) => {
-    if (locked) return
+    if (isLocked) return
     setError('')
     setPicked((prev) => {
       if (prev.includes(id)) {
@@ -88,6 +81,10 @@ export function TourChampsPicksPage() {
 
   const onSave = () => {
     if (!board || !profile) return
+    if (isLocked) {
+      setError('Picks are locked — you can’t change them now.')
+      return
+    }
     if (picked.length !== CHAMPS_PICK_COUNT) {
       setError('Pick exactly four.')
       return
@@ -140,14 +137,27 @@ export function TourChampsPicksPage() {
           </p>
           <div className="text-right pb-0.5">
             <p className="text-xs font-bold text-muted-foreground">
-              {locked ? 'Locked' : deadlineLabel}
+              {isLocked ? (
+                <span className="inline-flex items-center gap-1">
+                  <Lock className="h-3 w-3" /> Locked
+                </span>
+              ) : (
+                <>
+                  <span className="num tabular-nums" style={{ color: TOUR_GOLD }}>
+                    {countdownLabel}
+                  </span>
+                  <span className="block mt-0.5">{deadlineLabel}</span>
+                </>
+              )}
             </p>
             <p className="text-sm font-bold mt-0.5">
-              {metFloor
-                ? 'Rank floor met'
-                : full && short > 0
-                  ? `Need 32+ · on ${used}`
-                  : `${picked.length}/4 picked`}
+              {isLocked
+                ? 'Picks can’t be changed'
+                : metFloor
+                  ? 'Rank floor met'
+                  : full && short > 0
+                    ? `Need 32+ · on ${used}`
+                    : `${picked.length}/4 picked`}
             </p>
           </div>
         </div>
@@ -209,7 +219,7 @@ export function TourChampsPicksPage() {
                 <button
                   key={p.id}
                   type="button"
-                  disabled={locked}
+                  disabled={isLocked}
                   onClick={() => setCaptainId(p.id)}
                   className="h-12 rounded-xl px-3 flex items-center gap-2 text-left border bg-card"
                   style={
@@ -232,7 +242,7 @@ export function TourChampsPicksPage() {
                 <button
                   key={n}
                   type="button"
-                  disabled={locked}
+                  disabled={isLocked}
                   onClick={() => setCaptainDay(n)}
                   className="h-11 rounded-xl text-sm font-bold border bg-card"
                   style={
@@ -259,7 +269,7 @@ export function TourChampsPicksPage() {
               <button
                 key={p.id}
                 type="button"
-                disabled={locked}
+                disabled={isLocked}
                 onClick={() => toggle(p.id)}
                 className={cn(
                   'w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-left border',
@@ -304,7 +314,7 @@ export function TourChampsPicksPage() {
 
       {error && <p className="px-4 text-sm text-destructive mt-3">{error}</p>}
 
-      {!locked && (
+      {!isLocked && (
         <div className="px-4 mt-5 mb-6">
           <button
             type="button"

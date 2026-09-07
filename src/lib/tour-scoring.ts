@@ -119,6 +119,9 @@ export interface ComputedMatch {
   aWins: number
   bWins: number
   holesPlayed: number
+  /** Matchplay decided (dormie or 18 hole-winners) — boards can show result. */
+  decided: boolean
+  /** @deprecated use `decided` */
   closed: boolean
   statusLabel: string
   leader: TourTeam | 'half' | null
@@ -149,14 +152,18 @@ export function computeMatchPlay(
   const views: MatchHoleView[] = []
   let aWins = 0
   let bWins = 0
+  let holesPlayed = 0
+  let decided = false
+  let resultAWins = 0
+  let resultBWins = 0
+  let resultHolesPlayed = 0
+  let resultRemaining = 18
 
   for (let n = 1; n <= 18; n++) {
     const par = parByHole.get(n) ?? 4
     const aPts = sideValueForHole(playerIdsA, n, sf, net, spec, par)
     const bPts = sideValueForHole(playerIdsB, n, sf, net, spec, par)
     const winner = holeWinner(aPts, bPts, spec.compare)
-    if (winner === 'a') aWins++
-    if (winner === 'b') bWins++
     views.push({
       hole: n,
       winner,
@@ -164,16 +171,35 @@ export function computeMatchPlay(
       aPoints: aPts,
       bPoints: bPts,
     })
+
+    // Always capture hole outcomes on the card, but freeze match result once decided.
+    if (winner == null || decided) continue
+
+    if (winner === 'a') aWins++
+    if (winner === 'b') bWins++
+    holesPlayed++
+    const remaining = 18 - holesPlayed
+    const lead = aWins - bWins
+    if (remaining === 0 || Math.abs(lead) > remaining) {
+      decided = true
+      resultAWins = aWins
+      resultBWins = bWins
+      resultHolesPlayed = holesPlayed
+      resultRemaining = remaining
+    }
   }
 
-  const holesPlayed = views.filter((h) => h.winner != null).length
-  const lead = aWins - bWins
-  const remaining = 18 - holesPlayed
-  const closed = holesPlayed > 0 && (remaining === 0 || Math.abs(lead) > remaining)
+  if (!decided) {
+    resultAWins = aWins
+    resultBWins = bWins
+    resultHolesPlayed = holesPlayed
+    resultRemaining = 18 - holesPlayed
+  }
 
+  const lead = resultAWins - resultBWins
   let pointsA = 0
   let pointsB = 0
-  if (closed) {
+  if (decided) {
     if (lead > 0) pointsA = 1
     else if (lead < 0) pointsB = 1
     else {
@@ -183,15 +209,24 @@ export function computeMatchPlay(
   }
 
   const leader: TourTeam | 'half' | null =
-    holesPlayed === 0 ? null : lead > 0 ? teamA : lead < 0 ? teamB : 'half'
+    resultHolesPlayed === 0 ? null : lead > 0 ? teamA : lead < 0 ? teamB : 'half'
 
   return {
     holes: views,
-    aWins,
-    bWins,
-    holesPlayed,
-    closed,
-    statusLabel: matchStatusLabel(teamA, teamB, aWins, bWins, holesPlayed, remaining, closed),
+    aWins: resultAWins,
+    bWins: resultBWins,
+    holesPlayed: resultHolesPlayed,
+    decided,
+    closed: decided,
+    statusLabel: matchStatusLabel(
+      teamA,
+      teamB,
+      resultAWins,
+      resultBWins,
+      resultHolesPlayed,
+      resultRemaining,
+      decided,
+    ),
     leader,
     pointsA,
     pointsB,
@@ -248,6 +283,25 @@ export function playerStablefordTotal(scores: TourHoleScore[], tourPlayerId: str
   return scores
     .filter((s) => s.tour_player_id === tourPlayerId)
     .reduce((sum, s) => sum + s.stableford_points, 0)
+}
+
+/** Every player in the match has a gross score on holes 1–18. */
+export function isTourCardComplete(
+  scores: Pick<TourHoleScore, 'tour_player_id' | 'hole_number' | 'gross_score'>[],
+  playerIds: string[],
+): boolean {
+  if (playerIds.length === 0) return false
+  const have = new Set(
+    scores
+      .filter((s) => s.gross_score >= 1)
+      .map((s) => `${s.tour_player_id}:${s.hole_number}`),
+  )
+  for (const id of playerIds) {
+    for (let h = 1; h <= 18; h++) {
+      if (!have.has(`${id}:${h}`)) return false
+    }
+  }
+  return true
 }
 
 export const CHAMPS_RANK_BUDGET = 32

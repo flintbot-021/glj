@@ -93,6 +93,10 @@ import {
   updateTourMatch,
   deleteTourMatch,
   replaceTourMatchPlayers,
+  setTourMatchWager,
+  clearTourMatchWager,
+  confirmTourMatchCard,
+  resetTourMatchCard,
 } from '@/lib/supabase/api'
 import { loadTourBoard, loadTourMatchBundle, saveTourHolesAndRollup } from '@/lib/tour-board'
 import { champsPicksLocked } from '@/lib/tour-colors'
@@ -1443,6 +1447,51 @@ export function useSaveTourHoles() {
       qc.invalidateQueries({ queryKey: ['tour-hole-scores'] })
       qc.invalidateQueries({ queryKey: ['tour-day-matches'] })
       qc.invalidateQueries({ queryKey: ['tour-leaderboard'] })
+    },
+  })
+}
+
+function invalidateTourMatchSettle(qc: QueryClient, matchId: string) {
+  qc.invalidateQueries({ queryKey: ['tour-match-bundle', matchId] })
+  qc.invalidateQueries({ queryKey: ['tour-board'] })
+  qc.invalidateQueries({ queryKey: ['tour-day-matches'] })
+  qc.invalidateQueries({ queryKey: ['wallet-balance'] })
+  qc.invalidateQueries({ queryKey: ['wallet-transactions'] })
+  qc.invalidateQueries({ queryKey: ['players'] })
+}
+
+export function useSetTourMatchWager() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ matchId, amount }: { matchId: string; amount: number }) =>
+      setTourMatchWager(matchId, amount),
+    onSuccess: (_d, vars) => invalidateTourMatchSettle(qc, vars.matchId),
+  })
+}
+
+export function useClearTourMatchWager() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (matchId: string) => clearTourMatchWager(matchId),
+    onSuccess: (_d, matchId) => invalidateTourMatchSettle(qc, matchId),
+  })
+}
+
+export function useConfirmTourMatchCard() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (matchId: string) => confirmTourMatchCard(matchId),
+    onSuccess: (_d, matchId) => invalidateTourMatchSettle(qc, matchId),
+  })
+}
+
+export function useResetTourMatchCard() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (matchId: string) => resetTourMatchCard(matchId),
+    onSuccess: (_d, matchId) => {
+      invalidateTourMatchSettle(qc, matchId)
+      qc.invalidateQueries({ queryKey: ['tour-hole-scores', matchId] })
     },
   })
 }

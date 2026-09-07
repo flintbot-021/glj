@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router'
 import { useTourBoard } from '@/hooks/use-data'
+import { useChampsCountdown } from '@/hooks/use-champs-countdown'
+import { useAuthStore } from '@/stores/auth-store'
 import { PlayerAvatar } from '@/components/ui/player-avatar'
-import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
-import { TourMatchCard } from '@/components/tour/tour-match-card'
+import { TourMatchCard, TourMatchPlaceholderCard } from '@/components/tour/tour-match-card'
 import { TourTally, fmtPts } from '@/components/tour/tour-tally'
 import {
   Sheet,
@@ -13,11 +14,19 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet'
-import { TEAM_BLUE, TEAM_RED, TOUR_GOLD, TOUR_GOLD_FG, champsDeadlineIso, champsPicksLocked } from '@/lib/tour-colors'
-import { matchIsPending, type TourBoardDay, type TourChampsRow, type TourGreenJacketRow, type TourMatchView } from '@/lib/tour-board'
+import { TEAM_BLUE, TEAM_RED, TOUR_GOLD, TOUR_GOLD_FG } from '@/lib/tour-colors'
+import {
+  matchIsPending,
+  type TourBoardDay,
+  type TourChampsLockedIn,
+  type TourChampsRow,
+  type TourGreenJacketRow,
+  type TourMatchView,
+} from '@/lib/tour-board'
 import { profileDisplayName, profileFirstName } from '@/lib/format'
 import { cn } from '@/lib/utils'
-import { Eye, Flag, Pencil, Star } from 'lucide-react'
+import { expectedMatchCount, matchFormatFromTourFormat } from '@/lib/tour-scoring'
+import { Check, Eye, Flag, Lock, Pencil, Star } from 'lucide-react'
 
 type HubTab = 'team' | 'jacket' | 'champs'
 
@@ -27,16 +36,10 @@ export function TourPage() {
   const tab = parseTab(params.get('tab'))
   const { data: board, isLoading } = useTourBoard()
   const [picked, setPicked] = useState<TourMatchView | null>(null)
+  const profile = useAuthStore((s) => s.profile)
+  const countdown = useChampsCountdown(board?.event.champs_deadline)
 
-  if (isLoading) {
-    return (
-      <div className="px-4 py-4 space-y-3">
-        <Skeleton className="h-40 rounded-2xl" />
-        <Skeleton className="h-10 rounded-xl" />
-        <Skeleton className="h-48 rounded-2xl" />
-      </div>
-    )
-  }
+  if (isLoading) return null
 
   if (!board) {
     return (
@@ -46,15 +49,8 @@ export function TourPage() {
     )
   }
 
-  const locked = champsPicksLocked(board.event.champs_deadline)
-  const deadline = new Date(champsDeadlineIso(board.event.champs_deadline)).toLocaleString('en-GB', {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-    hour: '2-digit',
-    minute: '2-digit',
-    timeZone: 'Africa/Johannesburg',
-  })
+  const myPick = board.champs.find((c) => c.picker.id === profile?.id)
+  const lockedInCount = board.champsLockedIn.length
 
   return (
     <div className="pb-6">
@@ -72,14 +68,29 @@ export function TourPage() {
           onClick={() => navigate('/tour/champs/picks')}
           className="w-full rounded-2xl border border-border bg-card p-3.5 text-left"
         >
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-black">{locked ? 'My Champs picks' : 'Set Champs picks'}</p>
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-sm font-black">
+                {countdown.locked ? 'My Champs picks' : myPick ? 'Edit Champs picks' : 'Set Champs picks'}
+              </p>
               <p className="text-xs text-muted-foreground mt-0.5">
-                {locked ? 'Locked' : `Four players, ranks 32+ · locks ${deadline}`}
+                {countdown.locked
+                  ? `Locked · revealed ${countdown.deadlineLabel}`
+                  : `Four players, ranks 32+ · locks ${countdown.deadlineLabel}`}
               </p>
             </div>
-            <Pencil className="h-4 w-4 text-muted-foreground" />
+            <div className="shrink-0 text-right">
+              {countdown.locked ? (
+                <Lock className="h-4 w-4 text-muted-foreground ml-auto" />
+              ) : (
+                <>
+                  <p className="text-sm font-black num tabular-nums" style={{ color: TOUR_GOLD }}>
+                    {countdown.label}
+                  </p>
+                  <Pencil className="h-3.5 w-3.5 text-muted-foreground ml-auto mt-1" />
+                </>
+              )}
+            </div>
           </div>
         </button>
       </div>
@@ -116,7 +127,17 @@ export function TourPage() {
 
       {tab === 'team' && <TeamLog days={board.days} onMatch={setPicked} />}
       {tab === 'jacket' && <GreenJacketLog rows={board.greenJacket} />}
-      {tab === 'champs' && <ChampsLog rows={board.champs} locked={locked} />}
+      {tab === 'champs' && (
+        <ChampsLog
+          revealed={board.champsRevealed}
+          rows={board.champs}
+          lockedIn={board.champsLockedIn}
+          lockedInCount={lockedInCount}
+          countdownLabel={countdown.label}
+          deadlineLabel={countdown.deadlineLabel}
+          myPickerId={profile?.id}
+        />
+      )}
 
       <MatchActionSheet
         view={picked}
@@ -154,44 +175,63 @@ function TeamLog({
   }
   return (
     <div className="px-4 mt-4 space-y-5">
-      {rows.map((d, i) => (
-        <section key={d?.day.id ?? `day-${i + 1}`}>
-          <div className="flex items-baseline justify-between mb-2">
-            <div>
-              <h2 className="text-sm font-black">Day {i + 1}</h2>
-              {d ? (
-                <p className="text-xs text-muted-foreground">
-                  {d.format.name} · {d.course?.name ?? 'Course TBC'}
-                </p>
-              ) : (
-                <p className="text-xs text-muted-foreground">Not loaded yet</p>
-              )}
+      {rows.map((d, i) => {
+        const dayNumber = i + 1
+        const want = expectedMatchCount(d?.format, dayNumber)
+        const singles =
+          matchFormatFromTourFormat(d?.format).agg === 'individual' ||
+          matchFormatFromTourFormat(d?.format).compare === 'lower_net' ||
+          want === 8
+        const matches = d?.matches ?? []
+        return (
+          <section key={d?.day.id ?? `day-${dayNumber}`}>
+            <div className="flex items-baseline justify-between mb-2">
+              <div>
+                <h2 className="text-sm font-black">Day {dayNumber}</h2>
+                {d ? (
+                  <p className="text-xs text-muted-foreground">
+                    {d.format.name} · {d.course?.name ?? 'Course TBC'}
+                  </p>
+                ) : (
+                  <p className="text-xs text-muted-foreground">Not loaded yet</p>
+                )}
+              </div>
+              <span className="text-sm font-black num">
+                {d && d.matches.some((m) => !matchIsPending(m)) ? (
+                  <>
+                    <span style={{ color: TEAM_BLUE }}>{fmtPts(d.points93)}</span>
+                    <span className="text-muted-foreground"> – </span>
+                    <span style={{ color: TEAM_RED }}>{fmtPts(d.points91)}</span>
+                  </>
+                ) : (
+                  <span className="text-muted-foreground text-xs font-bold">TBC</span>
+                )}
+              </span>
             </div>
-            <span className="text-sm font-black num">
-              {d && d.matches.some((m) => !matchIsPending(m)) ? (
-                <>
-                  <span style={{ color: TEAM_BLUE }}>{fmtPts(d.points93)}</span>
-                  <span className="text-muted-foreground"> – </span>
-                  <span style={{ color: TEAM_RED }}>{fmtPts(d.points91)}</span>
-                </>
-              ) : (
-                <span className="text-muted-foreground text-xs font-bold">TBC</span>
-              )}
-            </span>
-          </div>
-          {!d || d.matches.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-border px-3 py-4 text-center text-xs text-muted-foreground">
-              Pending
-            </div>
-          ) : (
             <div className="space-y-2">
-              {d.matches.map((m) => (
-                <TourMatchCard key={m.match.id} view={m} onClick={() => onMatch(m)} />
-              ))}
+              {Array.from({ length: want }, (_, idx) => {
+                const m = matches[idx]
+                if (m) {
+                  return (
+                    <TourMatchCard
+                      key={m.match.id}
+                      view={m}
+                      onClick={() => onMatch(m)}
+                    />
+                  )
+                }
+                return (
+                  <TourMatchPlaceholderCard
+                    key={`placeholder-${dayNumber}-${idx + 1}`}
+                    matchNumber={idx + 1}
+                    singles={singles}
+                  />
+                )
+              })}
             </div>
-          )}
-        </section>
-      ))}
+          </section>
+        )
+      })}
     </div>
   )
 }
@@ -208,8 +248,17 @@ function MatchActionSheet({
   onScore: () => void
 }) {
   const pending = view ? matchIsPending(view) : false
-  const names = (side: TourMatchView['playersA']) =>
-    side.length ? side.map((p) => profileFirstName(p.profile)).join(' / ') : 'TBD'
+  const names = (side: TourMatchView['playersA'], singles: boolean) => {
+    const slots = singles ? 1 : 2
+    const labels = side.map((p) => profileFirstName(p.profile))
+    while (labels.length < slots) labels.push(`Player ${labels.length + 1}`)
+    return labels.slice(0, slots).join(' / ')
+  }
+  const singles = view
+    ? matchFormatFromTourFormat(view.format).agg === 'individual' ||
+      matchFormatFromTourFormat(view.format).compare === 'lower_net' ||
+      matchFormatFromTourFormat(view.format).expectedMatches === 8
+    : false
   return (
     <Sheet open={view != null} onOpenChange={(open) => { if (!open) onClose() }}>
       <SheetContent side="bottom" className="rounded-t-2xl px-4 pb-8">
@@ -218,11 +267,13 @@ function MatchActionSheet({
             {view ? `Day ${view.dayNumber} · Match ${view.matchNumber}` : 'Match'}
           </SheetTitle>
           <SheetDescription>
-            {view ? `${names(view.playersA)} vs ${names(view.playersB)}` : ''}
+            {view
+              ? `${names(view.playersA, singles)} vs ${names(view.playersB, singles)}`
+              : ''}
           </SheetDescription>
         </SheetHeader>
         {pending ? (
-          <p className="text-sm text-muted-foreground py-2">Pending — lineup isn’t loaded yet.</p>
+          <p className="text-sm text-muted-foreground py-2">Lineup not set yet — pairings come from admin.</p>
         ) : (
           <div className="grid grid-cols-2 gap-2 mt-2">
             <Button variant="outline" className="h-12 font-bold" onClick={onView}>
@@ -282,83 +333,169 @@ function GreenJacketLog({ rows }: { rows: TourGreenJacketRow[] }) {
   )
 }
 
-function ChampsLog({ rows, locked }: { rows: TourChampsRow[]; locked: boolean }) {
-  if (rows.length === 0) {
+function ChampsLog({
+  revealed,
+  rows,
+  lockedIn,
+  lockedInCount,
+  countdownLabel,
+  deadlineLabel,
+  myPickerId,
+}: {
+  revealed: boolean
+  rows: TourChampsRow[]
+  lockedIn: TourChampsLockedIn[]
+  lockedInCount: number
+  countdownLabel: string
+  deadlineLabel: string
+  myPickerId?: string
+}) {
+  if (!revealed) {
     return (
-      <EmptyLog
-        text={locked ? 'No picks were submitted.' : 'Pick four players whose ranks add to 32 or more.'}
-      />
-    )
-  }
-  return (
-    <div className="px-4 mt-4 space-y-2">
-      {rows.map((row) => (
-        <div key={row.pick.id} className="rounded-2xl border border-border bg-card p-3">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2 min-w-0">
-              <span className="text-xs font-black w-5">{row.rank}</span>
-              <PlayerAvatar player={row.picker} size="xs" />
-              <span className="text-sm font-bold truncate">{profileDisplayName(row.picker)}</span>
+      <div className="px-4 mt-4 space-y-3">
+        <div className="rounded-2xl border border-border bg-card p-4">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-sm font-black">Teams sealed</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Picks stay hidden until {deadlineLabel}. You can see who has locked in.
+              </p>
             </div>
-            <span className="text-lg font-black num" style={{ color: TOUR_GOLD }}>
-              {row.total}
-            </span>
+            <div className="text-right shrink-0">
+              <p className="text-lg font-black num tabular-nums" style={{ color: TOUR_GOLD }}>
+                {countdownLabel}
+              </p>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mt-0.5">
+                to reveal
+              </p>
+            </div>
           </div>
-          <div className="grid grid-cols-[minmax(0,1fr)_2.25rem_2.25rem_2.25rem] gap-x-1 items-center px-1 mb-1">
-            <span />
-            {(['D1', 'D2', 'D3'] as const).map((label) => (
-              <span
-                key={label}
-                className="text-center text-[10px] font-bold uppercase tracking-wider text-muted-foreground"
-              >
-                {label}
-              </span>
-            ))}
-          </div>
-          <div className="space-y-0.5">
-            {row.picks.map((p, i) => {
-              const cap = p.id === row.captain.id
-              const days = row.pickDayPoints[i] ?? [0, 0, 0]
+          <p className="text-xs font-bold text-muted-foreground mt-3">
+            {lockedInCount} locked in
+          </p>
+        </div>
+
+        {lockedIn.length === 0 ? (
+          <EmptyLog text="No one has locked in yet. Be the first." />
+        ) : (
+          <div className="space-y-2">
+            {lockedIn.map((row) => {
+              const mine = row.picker.id === myPickerId
               return (
                 <div
-                  key={p.id}
-                  className="grid grid-cols-[minmax(0,1fr)_2.25rem_2.25rem_2.25rem] gap-x-1 items-center rounded-lg px-1 py-1.5"
+                  key={row.picker.id}
+                  className="flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2.5"
                 >
-                  <div className="flex items-center gap-1.5 min-w-0">
-                    <Star
-                      className="h-3 w-3 shrink-0"
-                      style={cap ? { color: TOUR_GOLD, fill: TOUR_GOLD } : { visibility: 'hidden' }}
-                    />
-                    <span className="text-[11px] font-black num text-muted-foreground w-6 shrink-0">
-                      #{p.seed}
-                    </span>
-                    <span className="text-sm font-bold truncate">{profileFirstName(p.profile)}</span>
-                  </div>
-                  {days.map((n, di) => {
-                    const doubled = cap && row.pick.captain_day === di + 1
-                    return (
-                      <span
-                        key={di}
-                        className={cn(
-                          'text-center text-sm num leading-none py-1 rounded-md',
-                          doubled ? 'font-black' : 'font-bold text-muted-foreground',
-                        )}
-                        style={
-                          doubled
-                            ? { color: TOUR_GOLD_FG, backgroundColor: TOUR_GOLD }
-                            : undefined
-                        }
-                      >
-                        {n || '–'}
-                      </span>
-                    )
-                  })}
+                  <Check className="h-4 w-4 shrink-0" style={{ color: TOUR_GOLD }} />
+                  <PlayerAvatar player={row.picker} size="xs" />
+                  <span className="text-sm font-bold truncate flex-1">
+                    {profileDisplayName(row.picker)}
+                    {mine ? ' (you)' : ''}
+                  </span>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                    Locked in
+                  </span>
                 </div>
               )
             })}
           </div>
-        </div>
+        )}
+
+        {rows.some((r) => r.picker.id === myPickerId) && (
+          <div className="pt-1">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-2 px-1">
+              Your team (only you can see this)
+            </p>
+            {rows
+              .filter((r) => r.picker.id === myPickerId)
+              .map((row) => (
+                <ChampsEntryCard key={row.pick.id} row={row} hideRank />
+              ))}
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  if (rows.length === 0) {
+    return <EmptyLog text="No picks were submitted." />
+  }
+
+  return (
+    <div className="px-4 mt-4 space-y-2">
+      {rows.map((row) => (
+        <ChampsEntryCard key={row.pick.id} row={row} />
       ))}
+    </div>
+  )
+}
+
+function ChampsEntryCard({ row, hideRank }: { row: TourChampsRow; hideRank?: boolean }) {
+  return (
+    <div className="rounded-2xl border border-border bg-card p-3">
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2 min-w-0">
+          {!hideRank && <span className="text-xs font-black w-5">{row.rank}</span>}
+          <PlayerAvatar player={row.picker} size="xs" />
+          <span className="text-sm font-bold truncate">{profileDisplayName(row.picker)}</span>
+        </div>
+        <span className="text-lg font-black num" style={{ color: TOUR_GOLD }}>
+          {row.total}
+        </span>
+      </div>
+      <div className="grid grid-cols-[minmax(0,1fr)_2.25rem_2.25rem_2.25rem] gap-x-1 items-center px-1 mb-1">
+        <span />
+        {(['D1', 'D2', 'D3'] as const).map((label) => (
+          <span
+            key={label}
+            className="text-center text-[10px] font-bold uppercase tracking-wider text-muted-foreground"
+          >
+            {label}
+          </span>
+        ))}
+      </div>
+      <div className="space-y-0.5">
+        {row.picks.map((p, i) => {
+          const cap = p.id === row.captain.id
+          const days = row.pickDayPoints[i] ?? [0, 0, 0]
+          return (
+            <div
+              key={p.id}
+              className="grid grid-cols-[minmax(0,1fr)_2.25rem_2.25rem_2.25rem] gap-x-1 items-center rounded-lg px-1 py-1.5"
+            >
+              <div className="flex items-center gap-1.5 min-w-0">
+                <Star
+                  className="h-3 w-3 shrink-0"
+                  style={cap ? { color: TOUR_GOLD, fill: TOUR_GOLD } : { visibility: 'hidden' }}
+                />
+                <span className="text-[11px] font-black num text-muted-foreground w-6 shrink-0">
+                  #{p.seed}
+                </span>
+                <span className="text-sm font-bold truncate">{profileFirstName(p.profile)}</span>
+              </div>
+              {days.map((n, di) => {
+                const doubled = cap && row.pick.captain_day === di + 1
+                return (
+                  <span
+                    key={di}
+                    className={cn(
+                      'text-center text-sm num leading-none py-1 rounded-md',
+                      doubled ? 'font-black' : 'font-bold text-muted-foreground',
+                    )}
+                    style={
+                      doubled
+                        ? { color: TOUR_GOLD_FG, backgroundColor: TOUR_GOLD }
+                        : undefined
+                    }
+                  >
+                    {n || '–'}
+                  </span>
+                )
+              })}
+            </div>
+          )
+        })}
+      </div>
     </div>
   )
 }

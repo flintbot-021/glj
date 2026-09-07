@@ -151,15 +151,16 @@ function TeamPill({ team }: { team: TourTeam }) {
 }
 
 function pipStyle(slot: TallySlot): CSSProperties {
-  if (slot.kind === 'pending') {
-    return { background: 'transparent', border: '1px dashed rgba(255,255,255,0.28)' }
-  }
-  if (slot.kind === 'to_play') {
-    return { background: 'rgba(0,0,0,0.28)' }
+  // Pending / not started: solid muted pip with a faint outline for contrast.
+  if (slot.kind === 'pending' || slot.kind === 'to_play') {
+    return {
+      background: 'rgba(0,0,0,0.22)',
+      border: '1px solid rgba(255,255,255,0.08)',
+    }
   }
   const color = teamFill(slot.team)
   if (slot.kind === 'live') {
-    return { background: 'transparent', border: `2px solid ${color}` }
+    return { background: color, opacity: 0.55 }
   }
   if (slot.team === 'half') {
     return { background: `linear-gradient(135deg, ${TEAM_BLUE} 50%, ${TEAM_RED} 50%)` }
@@ -168,15 +169,15 @@ function pipStyle(slot: TallySlot): CSSProperties {
 }
 
 function capsuleStyle(slot: TallySlot): CSSProperties {
-  if (slot.kind === 'pending') {
-    return { background: 'transparent', border: '1px dashed rgba(255,255,255,0.32)' }
-  }
-  if (slot.kind === 'to_play') {
-    return { background: 'rgba(0,0,0,0.28)' }
+  if (slot.kind === 'pending' || slot.kind === 'to_play') {
+    return {
+      background: 'rgba(0,0,0,0.22)',
+      border: '1px solid rgba(255,255,255,0.1)',
+    }
   }
   const color = teamFill(slot.team)
   if (slot.kind === 'live') {
-    return { background: 'transparent', border: `2px solid ${color}` }
+    return { background: color, opacity: 0.55 }
   }
   if (slot.team === 'half') {
     return { background: `linear-gradient(90deg, ${TEAM_BLUE} 50%, ${TEAM_RED} 50%)` }

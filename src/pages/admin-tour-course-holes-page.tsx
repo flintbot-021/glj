@@ -37,7 +37,7 @@ export function AdminTourCourseHolesPage() {
         </Button>
         <div>
           <h1 className="text-xl font-black tracking-tight">{course?.name ?? 'Course holes'}</h1>
-          <p className="text-sm text-muted-foreground">Par, stroke index, yardage</p>
+          <p className="text-sm text-muted-foreground">Par, stroke index, metres (yellow tees)</p>
         </div>
       </div>
 
@@ -64,7 +64,7 @@ export function AdminTourCourseHolesPage() {
                   <TableHead className="w-14">#</TableHead>
                   <TableHead>Par</TableHead>
                   <TableHead>SI</TableHead>
-                  <TableHead>Yards</TableHead>
+                  <TableHead>Metres</TableHead>
                   <TableHead className="w-[100px]" />
                 </TableRow>
               </TableHeader>

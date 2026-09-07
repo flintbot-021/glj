@@ -339,6 +339,10 @@ export function mapTourMatch(r: Record<string, unknown>): TourMatch {
     status: r.status as TourMatch['status'],
     team_a_points: num(r.team_a_points),
     team_b_points: num(r.team_b_points),
+    wager_amount: r.wager_amount == null ? null : num(r.wager_amount),
+    wager_created_by: r.wager_created_by != null ? String(r.wager_created_by) : null,
+    card_confirmed_at: r.card_confirmed_at != null ? String(r.card_confirmed_at) : null,
+    wager_settled_at: r.wager_settled_at != null ? String(r.wager_settled_at) : null,
     created_at: String(r.created_at),
   }
 }

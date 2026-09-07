@@ -61,6 +61,7 @@ const singlesMp = matchFormatFromRules({ preset: 'singles_matchplay' })
   assert.equal(m.bWins, 1)
   assert.equal(m.statusLabel, 'AS')
   assert.equal(m.closed, false)
+  assert.equal(m.decided, false)
   assert.equal(m.points93, 0)
 }
 
@@ -72,9 +73,53 @@ const singlesMp = matchFormatFromRules({ preset: 'singles_matchplay' })
   }
   const m = computeMatchPlay(scores, ['a0'], ['b0'], '93s', '91s', matchFormatFromRules({ preset: 'singles_stableford' }))
   assert.equal(m.closed, true)
+  assert.equal(m.decided, true)
   assert.equal(m.points93, 1)
   assert.equal(m.points91, 0)
   assert.equal(m.statusLabel, '93s 10&8')
+}
+
+{
+  // 4&3 after 15: 93s 8, 91s 4, holes 13–15 halved → freeze 4&3 even if remaining holes are filled
+  const scores: TourHoleScore[] = []
+  const aWinsHoles = new Set([1, 2, 3, 4, 5, 6, 7, 8])
+  const bWinsHoles = new Set([9, 10, 11, 12])
+  for (let h = 1; h <= 15; h++) {
+    if (aWinsHoles.has(h)) scores.push(score('a0', h, 3), score('b0', h, 1))
+    else if (bWinsHoles.has(h)) scores.push(score('a0', h, 1), score('b0', h, 3))
+    else scores.push(score('a0', h, 2), score('b0', h, 2))
+  }
+  const decided = computeMatchPlay(
+    scores,
+    ['a0'],
+    ['b0'],
+    '93s',
+    '91s',
+    matchFormatFromRules({ preset: 'singles_stableford' }),
+  )
+  assert.equal(decided.statusLabel, '93s 4&3')
+  assert.equal(decided.aWins, 8)
+  assert.equal(decided.bWins, 4)
+  assert.equal(decided.decided, true)
+
+  // Trailing side wins 16–18 — card captures holes, match result stays 4&3
+  for (let h = 16; h <= 18; h++) {
+    scores.push(score('a0', h, 1), score('b0', h, 3))
+  }
+  const finished = computeMatchPlay(
+    scores,
+    ['a0'],
+    ['b0'],
+    '93s',
+    '91s',
+    matchFormatFromRules({ preset: 'singles_stableford' }),
+  )
+  assert.equal(finished.statusLabel, '93s 4&3')
+  assert.equal(finished.aWins, 8)
+  assert.equal(finished.bWins, 4)
+  assert.equal(finished.points93, 1)
+  assert.equal(finished.holes[15]!.winnerTeam, '91s')
+  assert.equal(finished.holes[17]!.winnerTeam, '91s')
 }
 
 {

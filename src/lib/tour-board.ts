@@ -1,5 +1,6 @@
 import {
   fetchProfileMap,
+  fetchTourChampsSubmittedPickers,
   fetchTourChumpsPicks,
   fetchTourCourses,
   fetchTourDays,
@@ -27,6 +28,7 @@ import {
   playerStablefordTotal,
   type ComputedMatch,
 } from '@/lib/tour-scoring'
+import { champsPicksRevealed } from '@/lib/tour-colors'
 import type {
   Profile,
   TourChumpsPick,
@@ -92,6 +94,12 @@ export interface TourChampsRow {
   rank: number
 }
 
+/** Submitted entry with teams hidden until reveal (except your own full row in `champs`). */
+export interface TourChampsLockedIn {
+  picker: Profile
+  submittedAt: string
+}
+
 export interface TourBoard {
   event: TourEvent
   players: TourRosterPlayer[]
@@ -100,19 +108,24 @@ export interface TourBoard {
   points93: number
   points91: number
   greenJacket: TourGreenJacketRow[]
+  /** Full pick details visible under RLS (own always; everyone after reveal). */
   champs: TourChampsRow[]
+  /** Everyone who has locked in — safe before reveal. */
+  champsLockedIn: TourChampsLockedIn[]
+  champsRevealed: boolean
 }
 
 export async function loadTourBoard(): Promise<TourBoard | null> {
   const event = await fetchTourEvent()
   if (!event) return null
 
-  const [rawPlayers, rawDays, formats, courses, picks] = await Promise.all([
+  const [rawPlayers, rawDays, formats, courses, picks, submitted] = await Promise.all([
     fetchTourPlayers(event.id),
     fetchTourDays(event.id),
     fetchTourFormats(),
     fetchTourCourses(event.id),
     fetchTourChumpsPicks(event.id),
+    fetchTourChampsSubmittedPickers(event.id),
   ])
 
   const dayIds = rawDays.map((d) => d.id)
@@ -126,6 +139,7 @@ export async function loadTourBoard(): Promise<TourBoard | null> {
     fetchProfileMap([
       ...rawPlayers.map((p) => p.player_id),
       ...picks.map((p) => p.picker_id),
+      ...submitted.map((s) => s.picker_id),
     ]),
   ])
 
@@ -248,6 +262,7 @@ export async function loadTourBoard(): Promise<TourBoard | null> {
     .map((row, i) => ({ ...row, rank: i + 1 }))
 
   const playerView = new Map(players.map((p) => [p.id, p]))
+  const champsRevealed = champsPicksRevealed(event.champs_deadline)
   const champs: TourChampsRow[] = picks
     .map((pick) => {
       const ids = [pick.pick_1_id, pick.pick_2_id, pick.pick_3_id, pick.pick_4_id]
@@ -273,6 +288,14 @@ export async function loadTourBoard(): Promise<TourBoard | null> {
     .sort((a, b) => b.total - a.total)
     .map((row, i) => ({ ...row, rank: i + 1 }))
 
+  const champsLockedIn: TourChampsLockedIn[] = submitted
+    .map((s) => {
+      const picker = profileMap.get(s.picker_id)
+      if (!picker) return null
+      return { picker, submittedAt: s.submitted_at }
+    })
+    .filter((row): row is TourChampsLockedIn => row != null)
+
   return {
     event,
     players,
@@ -282,6 +305,8 @@ export async function loadTourBoard(): Promise<TourBoard | null> {
     points91: dayViews.reduce((s, d) => s + d.points91, 0),
     greenJacket,
     champs,
+    champsLockedIn,
+    champsRevealed,
   }
 }
 
@@ -386,7 +411,14 @@ export async function saveTourHolesAndRollup(
     ctx.spec,
     ctx.holes,
   )
-  const status = computed.closed ? 'complete' : computed.holesPlayed > 0 ? 'in_progress' : 'scheduled'
+  // Decided early → points on boards; status stays in_progress until card confirm.
+  const existing = await fetchTourMatchById(ctx.matchId)
+  const confirmed = !!existing?.card_confirmed_at
+  const status = confirmed
+    ? 'complete'
+    : computed.holesPlayed > 0 || computed.decided
+      ? 'in_progress'
+      : 'scheduled'
   await updateTourMatch(ctx.matchId, {
     status,
     team_a_points: computed.pointsA,
